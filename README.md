@@ -1,4 +1,4 @@
-# EcoReporteGrupo04
+# EcoReporte_Grupo04
 EcoReporte Comunitario
 
 EcoReporte Comunitario es un proyecto de proyección social orientada al desarrollo de una aplicación web para registrar, 
