@@ -21,3 +21,33 @@ EcoReporte Comunitario.
 
 ## Estado de Proyecto
 Fase 1: Organización y selección del proyecto.
+
+## ¿En qué consiste el problema?
+El problema consiste en la falta de un registro organizado de los problemas ambientales que ocurre en la comunidad. 
+Situaciones como la acumulación de basura, los botaderos clandestinos, la contaminación de ríos y quebradas, la quema
+de desechos y el deterioro de zonas verdes pueden presentarse sin que exista una herramienta que permite registrarlas,
+clasificarlas y darles seguimiento de manera ordenada.
+
+
+## Identificación General de los Beneficiarios 
+
+Los principales beneficiarios seran los recidentes de la zona, comercios y centros educativos ya que nos emplearemos en
+encontrar la manera de poder solucionar las diversas problematicas ambientales presentes en la comunidad que a travez de la encuesta
+realizada pudimos evidenciar, por lo que nos esforzaremos por atender la problematica de la comunidad de Las Toreras.
+
+## Lista de Requisitos Funcionales:
+
+- RF01 — Registrar usuarios
+- RF02 — Registrar reportes ambientales
+- RF03 — Clasificar reportes
+- RF04 — Registrar ubicación
+- RF05 — Registrar evidencia
+- RF06 — Consultar reportes
+- RF07 — Modificar reportes
+- RF08 — Eliminar reportes
+- RF09 — Actualizar estado
+- RF10 — Registrar seguimient
+
+
+
+
