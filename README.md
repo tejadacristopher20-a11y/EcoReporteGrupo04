@@ -20,4 +20,4 @@ los entes responsables, nuestra metas sera reducir estas carencias.
 EcoReporte Comunitario.
 
 ## Estado de Proyecto
-Fase 1: Organización y selección del proyecto 
+Fase 1: Organización y selección del proyecto.
