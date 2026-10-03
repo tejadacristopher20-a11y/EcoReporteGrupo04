@@ -23,6 +23,7 @@ EcoReporte Comunitario.
 Fase 1: Organización y selección del proyecto.
 
 ## ¿En qué consiste el problema?
+### Descripción 
 El problema consiste en la falta de un registro organizado de los problemas ambientales que ocurre en la comunidad. 
 Situaciones como la acumulación de basura, los botaderos clandestinos, la contaminación de ríos y quebradas, la quema
 de desechos y el deterioro de zonas verdes pueden presentarse sin que exista una herramienta que permite registrarlas,
