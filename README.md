@@ -51,12 +51,12 @@ realizada pudimos evidenciar, por lo que nos esforzaremos por atender la problem
 
 ## Lista de Requisitos No Funcionales:
 
--La aplicación deberá contar con una interfaz que pueda visualizarse correctamente en computadoras, tablets y dispositivos móviles.
--El sistema deberá validar los datos ingresados en los formularios antes de almacenarlos.
--El sistema deberá utilizar SQL Server para almacenar la información de la aplicación.
--El sistema deberá ser desarrollado utilizando Django, Python y HTML.
--El sistema deberá evitar exponer información personal innecesaria de los usuarios.
--La interfaz deberá presentar la información de manera clara y organizada para facilitar su utilización.
+- La aplicación deberá contar con una interfaz que pueda visualizarse correctamente en computadoras, tablets y dispositivos móviles.
+- El sistema deberá validar los datos ingresados en los formularios antes de almacenarlos.
+- El sistema deberá utilizar SQL Server para almacenar la información de la aplicación.
+- El sistema deberá ser desarrollado utilizando Django, Python y HTML.
+- El sistema deberá evitar exponer información personal innecesaria de los usuarios.
+- La interfaz deberá presentar la información de manera clara y organizada para facilitar su utilización.
 
 
 
