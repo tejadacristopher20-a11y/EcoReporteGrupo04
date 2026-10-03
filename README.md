@@ -6,7 +6,7 @@ organizar, consultar y dar seguimiento a problemáticas ambientales identificada
 Actualmente, situaciones como la proliferación de botaderos de basura a cielo abierto, el vertido clandestino 
 de aguas residuales o contaminantes, la quema de desechos a cielo abierto y la tala no autorizada de árboles se
 gestionan de forma fragmentada o quedan invisibilizadas por la falta de un canal directo entre los ciudadanos y 
-los entes responsables, nuestra metas sera reducir estas carencias.
+los dirigentes responsables, nuestra metas sera reducir estas carencias.
 
 ## Integrantes
 
