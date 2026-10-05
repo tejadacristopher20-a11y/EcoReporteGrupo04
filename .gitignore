@@ -7,3 +7,6 @@ __pycache__/
 
 # Variables de entorno
 .env
+
+# Base de datos
+db.sqlite3
