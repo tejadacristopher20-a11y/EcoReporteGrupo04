@@ -1,11 +1,14 @@
 # EcoReporte_Grupo04
+
 EcoReporte Comunitario
-#### Descripción: 
-EcoReporte Comunitario es un proyecto de proyección social orientada al desarrollo de una aplicación web para registrar, 
+
+#### Descripción:
+
+EcoReporte Comunitario es un proyecto de proyección social orientada al desarrollo de una aplicación web para registrar,
 organizar, consultar y dar seguimiento a problemáticas ambientales identificadas en una comunidad.
-Actualmente, situaciones como la proliferación de botaderos de basura a cielo abierto, el vertido clandestino 
+Actualmente, situaciones como la proliferación de botaderos de basura a cielo abierto, el vertido clandestino
 de aguas residuales o contaminantes, la quema de desechos a cielo abierto y la tala no autorizada de árboles se
-gestionan de forma fragmentada o quedan invisibilizadas por la falta de un canal directo entre los ciudadanos y 
+gestionan de forma fragmentada o quedan invisibilizadas por la falta de un canal directo entre los ciudadanos y
 los dirigentes responsables, nuestra metas sera reducir estas carencias.
 
 ## Integrantes
@@ -17,20 +20,21 @@ los dirigentes responsables, nuestra metas sera reducir estas carencias.
 - Brandon Edenilson Alas Tobias (brandonalas074-maker)
 
 ## Proyecto
+
 EcoReporte Comunitario.
 
 ## Estado de Proyecto
+
 Fase 1: Organización y selección del proyecto.
 
 ## ¿En qué consiste el problema?
 
-El problema consiste en la falta de un registro organizado de los problemas ambientales que ocurre en la comunidad. 
+El problema consiste en la falta de un registro organizado de los problemas ambientales que ocurre en la comunidad.
 Situaciones como la acumulación de basura, los botaderos clandestinos, la contaminación de ríos y quebradas, la quema
 de desechos y el deterioro de zonas verdes pueden presentarse sin que exista una herramienta que permite registrarlas,
 clasificarlas y darles seguimiento de manera ordenada.
 
-
-## Identificación General de los Beneficiarios 
+## Identificación General de los Beneficiarios
 
 Los principales beneficiarios seran los recidentes de la zona y también de sus alrededores, comercios y centros educativos ya que nos emplearemos en
 encontrar la manera de poder solucionar las diversas problematicas ambientales presentes en la comunidad que a travez de la encuesta
@@ -57,8 +61,3 @@ realizada pudimos evidenciar la falta de un sistema tecnologico que nos permita 
 - El sistema deberá ser desarrollado utilizando Django, Python y HTML.
 - El sistema deberá evitar exponer información personal innecesaria de los usuarios.
 - La interfaz deberá presentar la información de manera clara y organizada para facilitar su utilización.
-
-
-
-
-
