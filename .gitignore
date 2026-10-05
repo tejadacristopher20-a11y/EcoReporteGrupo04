@@ -1,0 +1,9 @@
+# Entorno virtual
+Eco_Reporte/
+
+# Python
+__pycache__/
+*.pyc
+
+# Variables de entorno
+.env
