@@ -40,6 +40,8 @@ Los principales beneficiarios seran los recidentes de la zona y también de sus 
 encontrar la manera de poder solucionar las diversas problematicas ambientales presentes en la comunidad que a travez de la encuesta
 realizada pudimos evidenciar la falta de un sistema tecnologico que nos permita llevar un registro y hacer una mejora en el entorno ambiental y educativo, por lo que nos esforzaremos por atender la problematica de la comunidad de Las Toreras departamento de Chalatenango.
 
+Fase 2: Diagnostico de la problematica y definición de requisitos
+
 ## Lista de Requisitos Funcionales:
 
 - RF01 — Registrar usuarios
@@ -61,6 +63,8 @@ realizada pudimos evidenciar la falta de un sistema tecnologico que nos permita 
 - El sistema deberá ser desarrollado utilizando Django, Python y HTML.
 - El sistema deberá evitar exponer información personal innecesaria de los usuarios.
 - La interfaz deberá presentar la información de manera clara y organizada para facilitar su utilización.
+
+Fase 3: Diseño de clases y modelado de la Base de Datos
 
 ## Descripción de las clases principales
 
