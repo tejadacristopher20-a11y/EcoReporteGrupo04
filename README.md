@@ -53,7 +53,8 @@ Fase 2: Diagnostico de la problematica y definición de requisitos
 - RF07 — Modificar reportes
 - RF08 — Eliminar reportes
 - RF09 — Actualizar estado
-- RF10 — Registrar seguimient
+- RF10 — Registrar seguimiento
+- RF11 — Filtrar reportes.
 
 ## Lista de Requisitos No Funcionales:
 
