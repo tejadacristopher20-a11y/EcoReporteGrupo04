@@ -61,3 +61,29 @@ realizada pudimos evidenciar la falta de un sistema tecnologico que nos permita 
 - El sistema deberá ser desarrollado utilizando Django, Python y HTML.
 - El sistema deberá evitar exponer información personal innecesaria de los usuarios.
 - La interfaz deberá presentar la información de manera clara y organizada para facilitar su utilización.
+
+## Descripción de las clases principales
+
+#### Clase Usuario
+
+- Representa a las personas que utilizan la aplicación para registrar, consultar y dar seguimiento a problemas ambientales de acuerdo con su rol dentro del sistema.
+
+#### Clase ReporteAmbiental
+
+- Representa un problema ambiental registrado en el sistema, almacenando la información necesaria para identificarlo, describirlo, clasificarlo y conocer su estado.
+
+#### Clase CategoriaProblema
+
+- Permite clasificar los reportes ambientales según el tipo de problema identificado, como acumulación de basura, contaminación de ríos, quema de desechos o daños en zonas verdes.
+
+#### Clase Ubicacion
+
+- Representa el lugar donde se presenta un problema ambiental y permite almacenar la información necesaria para identificar dicha ubicación.
+
+#### Clase Evidencia
+
+- Representa las fotografías o archivos que sirven como evidencia de un problema ambiental registrado.
+
+#### Clase Seguimiento
+
+- Representa las acciones realizadas sobre un reporte ambiental y permite mantener un registro de su evolución y cambios de estado.
