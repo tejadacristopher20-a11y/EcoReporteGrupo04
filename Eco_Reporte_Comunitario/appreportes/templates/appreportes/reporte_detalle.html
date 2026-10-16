@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ reporte.titulo }} · EcoReporte{% endblock %}
+
+{% block contenido %}
+<div class="container py-4">
+    <a class="small" href="{% url 'appreportes:lista' %}"><i class="bi bi-arrow-left"></i> Volver a los reportes</a>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mt-2 mb-3">
+        <div>
+            <h1 class="h3 mb-1">{{ reporte.titulo }}</h1>
+            <span class="badge eco-estado-{{ reporte.estado|lower }}">{{ reporte.get_estado_display }}</span>
+            <span class="badge eco-gravedad-{{ reporte.nivel_gravedad|lower }}">Gravedad {{ reporte.get_nivel_gravedad_display|lower }}</span>
+            {% if es_propietario %}<span class="badge text-bg-light border">Tu reporte</span>{% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            {% if puede_modificar %}
+                <a class="btn btn-outline-success btn-sm" href="{% url 'appreportes:editar' reporte.pk %}"><i class="bi bi-pencil"></i> Editar</a>
+            {% endif %}
+            {% if puede_eliminar %}
+                <a class="btn btn-outline-danger btn-sm" href="{% url 'appreportes:eliminar' reporte.pk %}"><i class="bi bi-trash"></i> Eliminar</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if es_propietario and not puede_modificar %}
+        <div class="alert alert-info py-2 small">Tu reporte ya está siendo atendido, por eso ya no se puede editar ni eliminar.</div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card eco-tarjeta mb-3">
+                <div class="card-body">
+                    <p class="mb-3 eco-texto">{{ reporte.descripcion }}</p>
+                    <dl class="row small mb-0">
+                        <dt class="col-sm-4">Categoría</dt><dd class="col-sm-8">{{ reporte.categoria }}</dd>
+                        <dt class="col-sm-4">Fecha del incidente</dt><dd class="col-sm-8">{{ reporte.fecha_incidente|date:"d/m/Y" }}</dd>
+                        <dt class="col-sm-4">Reportado el</dt><dd class="col-sm-8">{{ reporte.fecha_creacion|date:"d/m/Y H:i" }}</dd>
+                        <dt class="col-sm-4">Ubicación</dt>
+                        <dd class="col-sm-8">
+                            {{ reporte.ubicacion.referencia }}{% if reporte.ubicacion.direccion %} — {{ reporte.ubicacion.direccion }}{% endif %}<br>
+                            <span class="text-body-secondary">{{ reporte.ubicacion.comunidad }}</span>
+                            {% if reporte.ubicacion.tiene_coordenadas %}
+                                <br><a href="https://www.google.com/maps?q={{ reporte.ubicacion.latitud|stringformat:'f' }},{{ reporte.ubicacion.longitud|stringformat:'f' }}" target="_blank" rel="noopener">
+                                    <i class="bi bi-map"></i> Ver en el mapa
+                                </a>
+                            {% endif %}
+                        </dd>
+                        <dt class="col-sm-4">Institución asignada</dt>
+                        <dd class="col-sm-8">{{ asignacion.institucion|default:"Sin asignar" }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <h2 class="h5">Evidencias</h2>
+            <div class="row g-2 mb-3">
+                {% for evidencia in evidencias %}
+                    <div class="col-6 col-md-4">
+                        <a href="{{ evidencia.imagen.url }}" target="_blank" rel="noopener">
+                            <img src="{{ evidencia.imagen.url }}" class="img-fluid rounded eco-foto" alt="{{ evidencia.descripcion|default:'Evidencia del reporte' }}">
+                        </a>
+                        {% if evidencia.descripcion %}<div class="small text-body-secondary mt-1">{{ evidencia.descripcion }}</div>{% endif %}
+                    </div>
+                {% empty %}
+                    <p class="text-body-secondary small">Este reporte no tiene fotografías.</p>
+                {% endfor %}
+            </div>
+            {% if evidencia_form %}
+                <form method="post" action="{% url 'appreportes:agregar_evidencia' reporte.pk %}" enctype="multipart/form-data" class="card eco-tarjeta mb-4">
+                    <div class="card-body">
+                        <h3 class="h6">Agregar fotografía</h3>
+                        {% csrf_token %}
+                        {% include "includes/formulario.html" with form=evidencia_form %}
+                        <button type="submit" class="btn btn-outline-success btn-sm">Subir fotografía</button>
+                    </div>
+                </form>
+            {% endif %}
+
+            <h2 class="h5">Seguimiento</h2>
+            {% for seguimiento in seguimientos %}
+                <div class="border-start border-3 border-success ps-3 mb-3">
+                    <div class="fw-semibold">{{ seguimiento.accion }}</div>
+                    <div class="eco-texto">{{ seguimiento.descripcion }}</div>
+                    <div class="small text-body-secondary">
+                        {{ seguimiento.fecha_creacion|date:"d/m/Y H:i" }} · {{ seguimiento.usuario.get_rol_display }}{% if seguimiento.usuario.institucion %} de {{ seguimiento.usuario.institucion }}{% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <p class="text-body-secondary small">Todavía no se han registrado acciones de seguimiento.</p>
+            {% endfor %}
+        </div>
+
+        <div class="col-lg-4">
+            {% if estado_form %}
+                <form method="post" action="{% url 'appreportes:cambiar_estado' reporte.pk %}" class="card eco-tarjeta mb-3">
+                    <div class="card-body">
+                        <h2 class="h6">Cambiar estado</h2>
+                        {% csrf_token %}
+                        {% include "includes/formulario.html" with form=estado_form %}
+                        <button type="submit" class="btn btn-success btn-sm">Actualizar estado</button>
+                        {% if reporte.estado == "EN_PROCESO" and not seguimientos %}
+                            <p class="small text-body-secondary mt-2 mb-0">Para marcarlo como resuelto, primero registra un seguimiento.</p>
+                        {% endif %}
+                    </div>
+                </form>
+            {% endif %}
+
+            {% if seguimiento_form %}
+                <form method="post" action="{% url 'appreportes:registrar_seguimiento' reporte.pk %}" class="card eco-tarjeta mb-3">
+                    <div class="card-body">
+                        <h2 class="h6">Registrar seguimiento</h2>
+                        {% csrf_token %}
+                        {% include "includes/formulario.html" with form=seguimiento_form %}
+                        <button type="submit" class="btn btn-success btn-sm">Registrar</button>
+                    </div>
+                </form>
+            {% endif %}
+
+            {% if asignar_form %}
+                <form method="post" action="{% url 'appreportes:asignar' reporte.pk %}" class="card eco-tarjeta mb-3">
+                    <div class="card-body">
+                        <h2 class="h6">{% if asignacion %}Reasignar{% else %}Asignar{% endif %} a una institución</h2>
+                        {% csrf_token %}
+                        {% include "includes/formulario.html" with form=asignar_form %}
+                        <button type="submit" class="btn btn-success btn-sm">Asignar</button>
+                    </div>
+                </form>
+            {% endif %}
+
+            <div class="card eco-tarjeta">
+                <div class="card-body">
+                    <h2 class="h6">Historial de estados</h2>
+                    <ul class="list-unstyled small mb-0">
+                        {% for cambio in historial %}
+                            <li class="mb-2">
+                                <span class="fw-semibold">{{ cambio.get_estado_anterior_display }} → {{ cambio.get_estado_nuevo_display }}</span><br>
+                                <span class="text-body-secondary">{{ cambio.fecha_creacion|date:"d/m/Y H:i" }} · {{ cambio.usuario.get_rol_display }}</span>
+                                {% if cambio.observacion %}<br>{{ cambio.observacion }}{% endif %}
+                            </li>
+                        {% endfor %}
+                        <li class="text-body-secondary">Reportado el {{ reporte.fecha_creacion|date:"d/m/Y H:i" }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

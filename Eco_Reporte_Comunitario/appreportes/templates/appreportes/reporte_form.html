@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ titulo_pagina }} · EcoReporte{% endblock %}
+
+{% block contenido %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <h1 class="h3 mb-3">{{ titulo_pagina }}</h1>
+            <form method="post" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+                {% for error in form.non_field_errors %}
+                    <div class="alert alert-danger py-2">{{ error }}</div>
+                {% endfor %}
+
+                <div class="card eco-tarjeta mb-3">
+                    <div class="card-header fw-semibold"><i class="bi bi-clipboard"></i> ¿Qué está pasando?</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">{% include "includes/campo.html" with campo=form.categoria %}</div>
+                            <div class="col-md-6">{% include "includes/campo.html" with campo=form.nivel_gravedad %}</div>
+                        </div>
+                        {% include "includes/campo.html" with campo=form.titulo %}
+                        {% include "includes/campo.html" with campo=form.descripcion %}
+                        <div class="row">
+                            <div class="col-md-6">{% include "includes/campo.html" with campo=form.fecha_incidente %}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card eco-tarjeta mb-3">
+                    <div class="card-header fw-semibold"><i class="bi bi-geo-alt"></i> ¿Dónde?</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">{% include "includes/campo.html" with campo=form.comunidad %}</div>
+                            <div class="col-md-6">{% include "includes/campo.html" with campo=form.referencia %}</div>
+                        </div>
+                        {% include "includes/campo.html" with campo=form.direccion %}
+                        <div class="row">
+                            <div class="col-6">{% include "includes/campo.html" with campo=form.latitud %}</div>
+                            <div class="col-6">{% include "includes/campo.html" with campo=form.longitud %}</div>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="usar-mi-ubicacion">
+                            <i class="bi bi-crosshair"></i> Usar mi ubicación actual
+                        </button>
+                        <span class="small text-body-secondary ms-2" id="estado-ubicacion"></span>
+                    </div>
+                </div>
+
+                {% if form.foto %}
+                    <div class="card eco-tarjeta mb-3">
+                        <div class="card-header fw-semibold"><i class="bi bi-camera"></i> Evidencia</div>
+                        <div class="card-body">
+                            {% include "includes/campo.html" with campo=form.foto %}
+                            <p class="small text-body-secondary mb-0">Podrás agregar más fotografías desde el detalle del reporte.</p>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-success">Guardar reporte</button>
+                    <a class="btn btn-outline-secondary" href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'appreportes:panel' %}{% endif %}">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Llena latitud y longitud con la ubicación del dispositivo (si el usuario lo permite).
+    document.getElementById("usar-mi-ubicacion").addEventListener("click", function () {
+        const estado = document.getElementById("estado-ubicacion");
+        if (!navigator.geolocation) {
+            estado.textContent = "Tu navegador no permite obtener la ubicación.";
+            return;
+        }
+        estado.textContent = "Obteniendo ubicación...";
+        navigator.geolocation.getCurrentPosition(function (posicion) {
+            document.getElementById("{{ form.latitud.id_for_label }}").value = posicion.coords.latitude.toFixed(7);
+            document.getElementById("{{ form.longitud.id_for_label }}").value = posicion.coords.longitude.toFixed(7);
+            estado.textContent = "Ubicación agregada.";
+        }, function () {
+            estado.textContent = "No se pudo obtener la ubicación.";
+        });
+    });
+</script>
+{% endblock %}

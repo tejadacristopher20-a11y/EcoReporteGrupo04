@@ -1,0 +1,93 @@
+:root {
+    --eco-verde: #2e7d32;
+    --eco-verde-oscuro: #1b5e20;
+    --eco-verde-claro: #e8f5e9;
+}
+
+.eco-navbar {
+    background-color: var(--eco-verde-oscuro);
+}
+
+.eco-hero {
+    background-color: var(--eco-verde-claro);
+    border-bottom: 1px solid #c8e6c9;
+}
+
+.eco-hero h1 {
+    color: var(--eco-verde-oscuro);
+}
+
+.eco-tarjeta {
+    border-color: #dfe7df;
+}
+
+.eco-numero {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.eco-estado-pendiente {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+.eco-estado-en_proceso {
+    background-color: #cfe2ff;
+    color: #052c65;
+}
+
+.eco-estado-resuelto {
+    background-color: #d1e7dd;
+    color: #0a3622;
+}
+
+.eco-gravedad-bajo {
+    background-color: #e2e3e5;
+    color: #2b2f32;
+}
+
+.eco-gravedad-medio {
+    background-color: #ffe5d0;
+    color: #6a2c00;
+}
+
+.eco-gravedad-alto {
+    background-color: #f8d7da;
+    color: #58151c;
+}
+
+.eco-tarjeta-enlace {
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.eco-tarjeta-enlace:hover {
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
+}
+
+.eco-miniatura {
+    width: 100%;
+    height: 100%;
+    min-height: 5rem;
+    object-fit: cover;
+}
+
+.eco-foto {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
+.eco-texto {
+    white-space: pre-line;
+}
+
+.eco-icono-grande {
+    font-size: 3rem;
+    color: var(--eco-verde);
+}
+
+.eco-footer {
+    background-color: var(--eco-verde-claro);
+    color: var(--eco-verde-oscuro);
+}

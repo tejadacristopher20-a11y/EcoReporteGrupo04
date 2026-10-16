@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<section class="eco-hero py-5">
+    <div class="container">
+        <h1 class="fw-bold">Reporta los problemas ambientales de tu comunidad</h1>
+        <p class="lead">
+            Registra basura acumulada, botaderos clandestinos, contaminación de ríos y quebradas,
+            quema de desechos y daños en zonas verdes, y da seguimiento a cada caso hasta su solución.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-success btn-lg" href="{% url 'appreportes:crear' %}">
+                <i class="bi bi-plus-circle"></i> Reportar un problema
+            </a>
+            <a class="btn btn-outline-success btn-lg" href="{% url 'appreportes:lista' %}">Ver reportes</a>
+        </div>
+        {% if not user.is_authenticated %}
+            <p class="small text-body-secondary mt-2 mb-0">
+                Para reportar necesitas una cuenta. <a href="{% url 'appusuarios:registro' %}">Regístrate aquí</a>.
+            </p>
+        {% endif %}
+    </div>
+</section>
+
+<div class="container mt-4">
+    <div class="row g-3 text-center">
+        <div class="col-6 col-lg-3">
+            <div class="card eco-tarjeta h-100"><div class="card-body">
+                <div class="eco-numero">{{ totales.total }}</div>
+                <div class="text-body-secondary">Reportes registrados</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a class="card eco-tarjeta eco-tarjeta-enlace h-100 text-decoration-none" href="{% url 'appreportes:lista' %}?estado=PENDIENTE"><div class="card-body">
+                <div class="eco-numero text-warning-emphasis">{{ totales.pendientes }}</div>
+                <div class="text-body-secondary">Pendientes</div>
+            </div></a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a class="card eco-tarjeta eco-tarjeta-enlace h-100 text-decoration-none" href="{% url 'appreportes:lista' %}?estado=EN_PROCESO"><div class="card-body">
+                <div class="eco-numero text-primary-emphasis">{{ totales.en_proceso }}</div>
+                <div class="text-body-secondary">En proceso</div>
+            </div></a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a class="card eco-tarjeta eco-tarjeta-enlace h-100 text-decoration-none" href="{% url 'appreportes:lista' %}?estado=RESUELTO"><div class="card-body">
+                <div class="eco-numero text-success-emphasis">{{ totales.resueltos }}</div>
+                <div class="text-body-secondary">Resueltos</div>
+            </div></a>
+        </div>
+    </div>
+
+    {% if criticos %}
+        <div class="alert alert-danger mt-4 mb-0" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Hay <strong>{{ criticos }}</strong> caso{{ criticos|pluralize }} de gravedad alta sin resolver.
+            <a class="alert-link" href="{% url 'appreportes:lista' %}?nivel_gravedad=ALTO">Ver casos</a>
+        </div>
+    {% endif %}
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-baseline">
+                <h2 class="h4 mb-3">Últimos reportes</h2>
+                <a class="small" href="{% url 'appreportes:lista' %}">Ver todos</a>
+            </div>
+            {% for reporte in ultimos_reportes %}
+                {% include "includes/tarjeta_reporte.html" %}
+            {% empty %}
+                <p class="text-body-secondary">Todavía no hay reportes registrados.</p>
+            {% endfor %}
+        </div>
+
+        <div class="col-lg-4">
+            <h2 class="h4 mb-3">¿Qué se puede reportar?</h2>
+            <div class="list-group">
+                {% for categoria in categorias %}
+                    <a class="list-group-item list-group-item-action" href="{% url 'appreportes:lista' %}?categoria={{ categoria.pk }}">
+                        <div class="fw-semibold">{{ categoria.nombre }}</div>
+                        <div class="small text-body-secondary">{{ categoria.descripcion }}</div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

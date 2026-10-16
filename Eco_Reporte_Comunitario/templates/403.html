@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block titulo %}Acceso no permitido · EcoReporte{% endblock %}
+
+{% block contenido %}
+<div class="container py-5 text-center">
+    <i class="bi bi-shield-lock eco-icono-grande"></i>
+    <h1 class="h3 mt-3">No tienes permiso para realizar esta acción</h1>
+    <p class="text-body-secondary">Tu tipo de usuario no tiene acceso a esta página.</p>
+    <a class="btn btn-success" href="{% url 'appreportes:inicio' %}">Volver al inicio</a>
+</div>
+{% endblock %}

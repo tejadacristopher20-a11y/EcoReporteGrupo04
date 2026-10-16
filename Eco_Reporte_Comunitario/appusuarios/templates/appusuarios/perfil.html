@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block titulo %}Mi perfil · EcoReporte{% endblock %}
+
+{% block contenido %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card eco-tarjeta">
+                <div class="card-body p-4">
+                    <h1 class="h4 mb-3">Mi perfil</h1>
+                    <dl class="row small mb-3">
+                        <dt class="col-sm-4">Correo</dt><dd class="col-sm-8">{{ user.email }}</dd>
+                        <dt class="col-sm-4">Tipo de usuario</dt><dd class="col-sm-8">{{ user.get_rol_display }}</dd>
+                        {% if user.institucion %}
+                            <dt class="col-sm-4">Institución</dt><dd class="col-sm-8">{{ user.institucion }}</dd>
+                        {% endif %}
+                    </dl>
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        {% include "includes/formulario.html" %}
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="submit" class="btn btn-success">Guardar cambios</button>
+                            <a class="btn btn-outline-secondary" href="{% url 'appusuarios:cambiar_clave' %}">Cambiar contraseña</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

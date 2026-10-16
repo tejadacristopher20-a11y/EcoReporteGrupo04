@@ -1,0 +1,28 @@
+{% with foto=reporte.evidencias.all.0 %}
+<a href="{{ reporte.get_absolute_url }}" class="card eco-tarjeta eco-tarjeta-enlace mb-2 text-decoration-none text-body">
+    <div class="row g-0">
+        {% if foto %}
+            <div class="col-3 col-md-2">
+                <img src="{{ foto.imagen.url }}" class="eco-miniatura rounded-start" alt="Fotografía del reporte">
+            </div>
+        {% endif %}
+        <div class="{% if foto %}col-9 col-md-10{% else %}col-12{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <h3 class="h6 mb-1">
+                        {% if reporte.es_critico %}<i class="bi bi-exclamation-triangle-fill text-danger" title="Gravedad alta"></i>{% endif %}
+                        {{ reporte.titulo }}
+                    </h3>
+                    <span class="badge eco-estado-{{ reporte.estado|lower }}">{{ reporte.get_estado_display }}</span>
+                </div>
+                <div class="small text-body-secondary">
+                    <i class="bi bi-tag"></i> {{ reporte.categoria }}
+                    · <i class="bi bi-geo-alt"></i> {{ reporte.ubicacion.comunidad.nombre }}
+                    · <i class="bi bi-calendar3"></i> {{ reporte.fecha_incidente|date:"d/m/Y" }}
+                    · Gravedad {{ reporte.get_nivel_gravedad_display|lower }}
+                </div>
+            </div>
+        </div>
+    </div>
+</a>
+{% endwith %}

@@ -22,3 +22,5 @@ db.sqlite3
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+# Archivos subidos (evidencias)
+media/

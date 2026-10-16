@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block titulo %}Eliminar reporte · EcoReporte{% endblock %}
+
+{% block contenido %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-danger">
+                <div class="card-body p-4">
+                    <h1 class="h4">¿Eliminar este reporte?</h1>
+                    <p>Se eliminará <strong>«{{ reporte.titulo }}»</strong> junto con sus fotografías, seguimientos e historial. Esta acción no se puede deshacer.</p>
+                    <form method="post" class="d-flex flex-wrap gap-2">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                        <a class="btn btn-outline-secondary" href="{{ reporte.get_absolute_url }}">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

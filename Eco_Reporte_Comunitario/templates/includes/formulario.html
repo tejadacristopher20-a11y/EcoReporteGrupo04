@@ -1,0 +1,7 @@
+{% for error in form.non_field_errors %}
+    <div class="alert alert-danger py-2">{{ error }}</div>
+{% endfor %}
+{% for campo in form.hidden_fields %}{{ campo }}{% endfor %}
+{% for campo in form.visible_fields %}
+    {% include "includes/campo.html" %}
+{% endfor %}
