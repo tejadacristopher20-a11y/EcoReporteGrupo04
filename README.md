@@ -178,6 +178,73 @@ EcoReporteGrupo04/
     └── static/                    Estilos CSS
 ```
 
+## Instrucciones básicas para instalar y ejecutar la aplicación
+
+**Requisitos:** Python 3.13, SQL Server, SQL Server Management Studio y ODBC Driver 17 o 18 for SQL Server.
+
+1. Clonar el repositorio:
+
+   ```powershell
+   git clone https://github.com/tejadacristopher20-a11y/EcoReporteGrupo04.git
+   cd EcoReporteGrupo04
+   ```
+
+2. Crear y activar el entorno virtual, e instalar las dependencias:
+
+   ```powershell
+   python -m venv Eco_Reporte
+   .\Eco_Reporte\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+
+   Si PowerShell indica que la ejecución de scripts está deshabilitada, ejecutar primero
+   `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` y volver a activar el entorno.
+
+3. Crear la base de datos vacía `EcoReporteComunitario` en SQL Server Management Studio
+   (clic derecho en **Databases** → **New Database...**).
+
+4. Configurar las variables locales. Copiar `Eco_Reporte_Comunitario/.env.example` como `Eco_Reporte_Comunitario/.env` y completar los datos:
+   - `SECRET_KEY`: generar una propia con
+     `python -c "from django.core.management.utils import get_random_secret_key as g; print(g())"`
+   - `DB_HOST`: `localhost` (o el nombre de la instancia, por ejemplo `localhost\SQLEXPRESS`).
+   - `DB_DRIVER`: `ODBC Driver 17 for SQL Server` u `ODBC Driver 18 for SQL Server`.
+   - `DB_USER` y `DB_PASSWORD`: dejar vacíos si se usa autenticación de Windows.
+
+   El archivo `.env` no se sube a GitHub porque contiene datos privados.
+
+5. Crear las tablas y el usuario administrador:
+
+   ```powershell
+   cd Eco_Reporte_Comunitario
+   python manage.py migrate
+   python manage.py createsuperuser
+   ```
+
+   `migrate` crea las tablas en SQL Server y carga los datos iniciales (Chalatenango, San Ignacio, Las Toreras y las categorías de problema).
+
+6. Iniciar el servidor:
+
+   ```powershell
+   python manage.py runserver
+   ```
+
+   Abrir http://127.0.0.1:8000/ (aplicación) o http://127.0.0.1:8000/admin/ (administración).
+   La terminal debe quedar abierta mientras se usa la aplicación.
+
+7. (Opcional) Ejecutar las pruebas automáticas:
+
+   ```powershell
+   python manage.py test
+   ```
+
+**Para las siguientes veces** solo es necesario activar el entorno e iniciar el servidor:
+
+```powershell
+cd EcoReporteGrupo04\Eco_Reporte_Comunitario
+..\Eco_Reporte\Scripts\Activate.ps1
+python manage.py runserver
+```
+
 ## Flujo de atención de un caso
 
 1. El **ciudadano** se registra y reporta un problema con su fotografía. El reporte queda **Pendiente**.
