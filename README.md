@@ -132,10 +132,10 @@ Fase 4: Desarrollo de la aplicación
 
 Creación del Entorno Virtual:
 
-- Creación de un entorno virtual de Python  |  py -m venv venv
-- Activación del entorno   |  venv\Scripts\activate
+- Creación de un entorno virtual de Python       |  py -m venv venv
+- Activación del entorno                         |  venv\Scripts\activate
 - Instalar Django y las dependencias necesarias  |  pip install django
-- Generar el archivo requirements.txt  |  pip freeze > requirements.txt
+- Generar el archivo requirements.txt            |  pip freeze > requirements.txt
 
 Ejecución de la Aplicación:
 
