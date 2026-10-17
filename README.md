@@ -128,6 +128,28 @@ El sistema se organiza en **4 aplicaciones de Django** y **12 entidades**, cada 
 
 Fase 4: Desarrollo de la aplicación
 
+## Instrucciones basicas para instalación
+
+### Creación del entorno virtual
+
+| Paso | Descripción | Comando |
+|------|-------------|---------|
+| 1 | Crear un entorno virtual de Python | py -m venv venv |
+| 2 | Activar el entorno | venv\Scripts\activate |
+| 3 | Instalar Django y las dependencias necesarias | pip install django |
+| 4 | Generar el archivo requirements.txt | pip freeze > requirements.txt |
+
+### Ejecución de la aplicación
+
+| Paso | Descripción | Comando |
+|------|-------------|---------|
+| 1 | Crear el proyecto | django-admin startproject EcoReporte |
+| 2 | Iniciar el servidor local para probar las aplicaciones | py manage.py runserver |
+| 3 | Crear una nueva aplicación | python manage.py startapp nombre_app |
+| 4 | Conectar Django con una base de datos SQL Server | python -m pip install "mssql-django==1.8.0" pyodbc python-dotenv |
+
+---
+
 ## Tecnologías utilizadas
 
 - Python 3.13
