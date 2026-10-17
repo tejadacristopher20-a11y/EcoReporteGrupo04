@@ -130,19 +130,25 @@ Fase 4: Desarrollo de la aplicación
 
 ## Instrucciones basicas para instalación
 
-Creación del Entorno Virtual:
+### Creación del entorno virtual
 
-- Creación de un entorno virtual de Python       |  py -m venv venv
-- Activación del entorno                         |  venv\Scripts\activate
-- Instalar Django y las dependencias necesarias  |  pip install django
-- Generar el archivo requirements.txt            |  pip freeze > requirements.txt
+| Paso | Descripción | Comando |
+|------|-------------|---------|
+| 1 | Crear un entorno virtual de Python | py -m venv venv |
+| 2 | Activar el entorno | venv\Scripts\activate |
+| 3 | Instalar Django y las dependencias necesarias | pip install django |
+| 4 | Generar el archivo requirements.txt | pip freeze > requirements.txt |
 
-Ejecución de la Aplicación:
+### Ejecución de la aplicación
 
-- Crea la estructura de la base de datos   |   django-admin startproject EcoReporte
-- Inicia el servidor local para probar la aplicación  |  Py manage.py runserver
-- Crea una nueva aplicación   |  Python manage.py startapp
-- Conectar Django con una base de datos SQL Server  |  Python -m pip install “mssql-django==1.8.0” pyodbc python-dotenv
+| Paso | Descripción | Comando |
+|------|-------------|---------|
+| 1 | Crear el proyecto | django-admin startproject EcoReporte |
+| 2 | Iniciar el servidor local para probar las aplicaciones | py manage.py runserver |
+| 3 | Crear una nueva aplicación | python manage.py startapp nombre_app |
+| 4 | Conectar Django con una base de datos SQL Server | python -m pip install "mssql-django==1.8.0" pyodbc python-dotenv |
+
+---
 
 ## Tecnologías utilizadas
 
