@@ -47,6 +47,10 @@ El problema consiste en la falta de un registro organizado de los problemas ambi
 Situaciones como la acumulación de basura, los botaderos clandestinos, la contaminación de ríos y quebradas, la quema
 de desechos y el deterioro de zonas verdes pueden presentarse sin que exista una herramienta que permita registrarlas,
 clasificarlas y darles seguimiento de manera ordenada.
+Para solucionarlo, la plataforma implementará reportes geolocalizados con fotos y categorías para registrar
+cada incidente.
+Asimismo, permitirá ásignar estados de atención (Pendientes, en proceso, resuelto) para dar un seguimiento
+transparente de los reportes.
 
 ## Identificación General de los Beneficiarios
 
