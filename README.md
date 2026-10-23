@@ -169,7 +169,7 @@ Fase 4: Desarrollo de la aplicación
 - HTML y Bootstrap 5 (diseño adaptable a computadoras, tablets y celulares)
 - Pillow (manejo de fotografías)
 
-  **Herramientas de comunicación utilizadas.
+  ## Herramientas de comunicación utilizadas.
   
   - Whapsapp
   - Mid
