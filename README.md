@@ -172,7 +172,7 @@ Fase 4: Desarrollo de la aplicación
   ## Herramientas de comunicación utilizadas.
   
   - Whapsapp
-  - Mid
+  - Meet
   - Gmail
 
 ## Tipos de usuario
