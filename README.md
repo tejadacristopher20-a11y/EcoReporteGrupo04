@@ -12,7 +12,9 @@ gestionan de forma fragmentada o quedan invisibilizadas por la falta de un canal
 los dirigentes responsables. Estas problemáticas pueden ocasionar contaminación del suelo y del agua, deterioro
 de las áreas verdes, malos olores y riesgos para la salud de los habitantes, afectando su calidad de vida y el entorno natural.
 Ante esta situación, EcoReporte Comunitario busca ofrecer una alternativa tecnológica que permita a los usuarios registrar los 
-problemas ambientales
+problemas ambientales mediante formularios que incluyan información como la categoría del incidente, su ubicación, fecha, descripción,
+nivel de gravedad y fotografías como evidencia. De esta manera, se pretende contribuir a una gestión más organizada de las 
+problemáticas ambientales.
 
 
 
