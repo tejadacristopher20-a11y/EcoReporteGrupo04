@@ -170,6 +170,7 @@ Fase 4: Desarrollo de la aplicación
 - Pillow (manejo de fotografías)
 
   **Herramientas de comunicación utilizadas.
+  
   -Whapsapp
   -Mid
   -Gmail
