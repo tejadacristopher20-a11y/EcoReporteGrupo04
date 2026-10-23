@@ -171,7 +171,7 @@ Fase 4: Desarrollo de la aplicación
 
   ## Herramientas de comunicación utilizadas.
   
-  - Whapsapp
+  - WhatsApp
   - Meet
   - Gmail
 
