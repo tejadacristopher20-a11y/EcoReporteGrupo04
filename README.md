@@ -9,7 +9,14 @@ organizar, consultar y dar seguimiento a problemáticas ambientales identificada
 Actualmente, situaciones como la proliferación de botaderos de basura a cielo abierto, el vertido clandestino
 de aguas residuales o contaminantes, la quema de desechos a cielo abierto y la tala no autorizada de árboles se
 gestionan de forma fragmentada o quedan invisibilizadas por la falta de un canal directo entre los ciudadanos y
-los dirigentes responsables; nuestra meta será reducir estas carencias.
+los dirigentes responsables. Estas problemáticas pueden ocasionar contaminación del suelo y del agua, deterioro
+de las áreas verdes, malos olores y riesgos para la salud de los habitantes, afectando su calidad de vida y el entorno natural.
+Ante esta situación, EcoReporte Comunitario busca ofrecer una alternativa tecnológica que permita a los usuarios registrar los 
+problemas ambientales mediante formularios que incluyan información como la categoría del incidente, su ubicación, fecha, descripción,
+nivel de gravedad y fotografías como evidencia. De esta manera, se pretende contribuir a una gestión más organizada de las 
+problemáticas ambientales.
+
+
 
 ## Integrantes
 
@@ -40,6 +47,10 @@ El problema consiste en la falta de un registro organizado de los problemas ambi
 Situaciones como la acumulación de basura, los botaderos clandestinos, la contaminación de ríos y quebradas, la quema
 de desechos y el deterioro de zonas verdes pueden presentarse sin que exista una herramienta que permita registrarlas,
 clasificarlas y darles seguimiento de manera ordenada.
+Para solucionarlo, la plataforma implementará reportes geolocalizados con fotos y categorías para registrar
+cada incidente.
+Asimismo, permitirá ásignar estados de atención (Pendientes, en proceso, resuelto) para dar un seguimiento
+transparente de los reportes.
 
 ## Identificación General de los Beneficiarios
 
@@ -157,6 +168,12 @@ Fase 4: Desarrollo de la aplicación
 - SQL Server (conexión con `mssql-django` y ODBC Driver 17/18 for SQL Server)
 - HTML y Bootstrap 5 (diseño adaptable a computadoras, tablets y celulares)
 - Pillow (manejo de fotografías)
+
+  ## Herramientas de comunicación utilizadas.
+  
+  - WhatsApp
+  - Meet
+  - Gmail
 
 ## Tipos de usuario
 
