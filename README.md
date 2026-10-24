@@ -291,3 +291,5 @@ python manage.py runserver
 3. El **responsable** de esa institución lo pasa a **En proceso** y registra las acciones de seguimiento.
 4. Cuando el problema se soluciona, el responsable lo marca como **Resuelto**.
 5. Cualquier persona puede consultar el estado y el historial del caso.
+
+## 
