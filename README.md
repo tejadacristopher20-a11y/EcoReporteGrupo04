@@ -303,12 +303,24 @@ Realizamos 3 registros de reportes necesarios para verificar la funcionalidad de
 - Basura 
 
 En cada reporte se represento su :
-Categoria
-Descripción
-Fecha del incidente
-Fecha de reporte
-Ubicación
+- Categoria
+- Descripción
+- Fecha del incidente
+- Fecha de reporte
+- Ubicación
 
-Ejemplo:
+Ejemplos:
 
+## Basura Acumuladada
+|Categoria | Descripción | Fecha incidente | Fecha reporte | Ubicación |
+|----------|-------------|-----------------|---------------|-----------|
+| Botadero clandestino | Personas vistas tirando basura en lugares no apropiados para esto.| 20/10/2026 | 23/10/2026 | Parque Las Toreras, San Ignacio Chalatenango |
+## Tala de Arboles a los alrededores
+|Categoria | Descripción | Fecha incidente | Fecha reporte | Ubicación |
+|----------|-------------|-----------------|---------------|-----------|
+| Daño en zonas verdes | Se evidencia una tala masiva de arboles en la comunidad | 21/10/2026 | 23/10/2026 | Parque Las Toreras, San Ignacio Chalatenango |
+## Basura
+|Categoria | Descripción | Fecha incidente | Fecha reporte | Ubicación |
+|----------|-------------|-----------------|---------------|-----------|
+| Acumulación de basura | Acumulación de basura en lugares no permitidos | 05/10/2026 | 23/10/2026 | Escuela Las Toreras, San Ignacio, Chalatenango |
 
