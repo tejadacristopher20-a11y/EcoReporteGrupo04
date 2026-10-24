@@ -292,4 +292,23 @@ python manage.py runserver
 4. Cuando el problema se soluciona, el responsable lo marca como **Resuelto**.
 5. Cualquier persona puede consultar el estado y el historial del caso.
 
-## 
+## Documentación de datos de prueba 
+
+Luego de crear y entrar a:  Abrir http://127.0.0.1:8000/ (aplicación) o http://127.0.0.1:8000/admin/ (administración). 
+
+Realizamos 3 registros de reportes necesarios para verificar la funcionalidad del codigo, los registros fueron: 
+
+- Basura Acumuladada
+- Tala de Arboles a los alrededores 
+- Basura 
+
+En cada reporte se represento su :
+Categoria
+Descripción
+Fecha del incidente
+Fecha de reporte
+Ubicación
+
+Ejemplo:
+
+
