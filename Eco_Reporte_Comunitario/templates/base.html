@@ -28,11 +28,13 @@
                 </ul>
                 <ul class="navbar-nav align-items-lg-center gap-lg-2">
                     {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="btn btn-light btn-sm my-2 my-lg-0" href="{% url 'appreportes:crear' %}">
-                                <i class="bi bi-plus-circle"></i> Nuevo reporte
-                            </a>
-                        </li>
+                        {% if user.rol != "RESPONSABLE" %}
+                            <li class="nav-item">
+                                <a class="btn btn-light btn-sm my-2 my-lg-0" href="{% url 'appreportes:crear' %}">
+                                    <i class="bi bi-plus-circle"></i> Nuevo reporte
+                                </a>
+                            </li>
+                        {% endif %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-person-circle"></i> {{ user.first_name|default:user.username }}
@@ -85,5 +87,16 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Muestra el nombre de la fotografía elegida en los selectores de archivo en español.
+        document.addEventListener("change", function (evento) {
+            const entrada = evento.target;
+            if (!entrada.matches(".eco-archivo input[type=file]")) {
+                return;
+            }
+            const nombre = entrada.closest(".eco-archivo").querySelector(".eco-archivo-nombre");
+            nombre.textContent = entrada.files.length ? entrada.files[0].name : "Ningún archivo seleccionado";
+        });
+    </script>
 </body>
 </html>

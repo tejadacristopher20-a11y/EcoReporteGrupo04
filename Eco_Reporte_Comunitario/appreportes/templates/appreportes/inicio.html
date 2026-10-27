@@ -9,9 +9,11 @@
             quema de desechos y daños en zonas verdes, y da seguimiento a cada caso hasta su solución.
         </p>
         <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-success btn-lg" href="{% url 'appreportes:crear' %}">
-                <i class="bi bi-plus-circle"></i> Reportar un problema
-            </a>
+            {% if user.rol != "RESPONSABLE" %}
+                <a class="btn btn-success btn-lg" href="{% url 'appreportes:crear' %}">
+                    <i class="bi bi-plus-circle"></i> Reportar un problema
+                </a>
+            {% endif %}
             <a class="btn btn-outline-success btn-lg" href="{% url 'appreportes:lista' %}">Ver reportes</a>
         </div>
         {% if not user.is_authenticated %}
@@ -24,28 +26,34 @@
 
 <div class="container mt-4">
     <div class="row g-3 text-center">
-        <div class="col-6 col-lg-3">
-            <div class="card eco-tarjeta h-100"><div class="card-body">
-                <div class="eco-numero">{{ totales.total }}</div>
+        <div class="col-6 col-md-4 col-lg">
+            <a class="card eco-tarjeta eco-tarjeta-enlace h-100 text-decoration-none" href="{% url 'appreportes:lista' %}"><div class="card-body">
+                <div class="eco-numero text-body">{{ totales.total }}</div>
                 <div class="text-body-secondary">Reportes registrados</div>
-            </div></div>
+            </div></a>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-4 col-lg">
             <a class="card eco-tarjeta eco-tarjeta-enlace h-100 text-decoration-none" href="{% url 'appreportes:lista' %}?estado=PENDIENTE"><div class="card-body">
                 <div class="eco-numero text-warning-emphasis">{{ totales.pendientes }}</div>
                 <div class="text-body-secondary">Pendientes</div>
             </div></a>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-4 col-lg">
             <a class="card eco-tarjeta eco-tarjeta-enlace h-100 text-decoration-none" href="{% url 'appreportes:lista' %}?estado=EN_PROCESO"><div class="card-body">
                 <div class="eco-numero text-primary-emphasis">{{ totales.en_proceso }}</div>
                 <div class="text-body-secondary">En proceso</div>
             </div></a>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-6 col-lg">
             <a class="card eco-tarjeta eco-tarjeta-enlace h-100 text-decoration-none" href="{% url 'appreportes:lista' %}?estado=RESUELTO"><div class="card-body">
                 <div class="eco-numero text-success-emphasis">{{ totales.resueltos }}</div>
                 <div class="text-body-secondary">Resueltos</div>
+            </div></a>
+        </div>
+        <div class="col-12 col-md-6 col-lg">
+            <a class="card eco-tarjeta eco-tarjeta-enlace h-100 text-decoration-none" href="{% url 'appreportes:lista' %}?estado=DESCARTADO"><div class="card-body">
+                <div class="eco-numero text-secondary-emphasis">{{ totales.descartados }}</div>
+                <div class="text-body-secondary">Descartados</div>
             </div></a>
         </div>
     </div>

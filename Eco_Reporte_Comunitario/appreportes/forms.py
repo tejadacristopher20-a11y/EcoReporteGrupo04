@@ -103,12 +103,25 @@ class EvidenciaForm(EstiloBootstrapMixin, forms.ModelForm):
 
 
 class CambiarEstadoForm(EstiloBootstrapMixin, forms.Form):
+    """RF09."""
+
     estado = forms.ChoiceField(label="Nuevo estado")
-    observacion = forms.CharField(label="Observación", max_length=300, required=False)
+    observacion = forms.CharField(
+        label="Observación",
+        max_length=300,
+        required=False,
+        help_text="Obligatoria si el reporte se descarta (por ejemplo: duplicado, falso o fuera de la comunidad).",
+    )
 
     def __init__(self, *args, reporte, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["estado"].choices = [(e.value, e.label) for e in reporte.estados_siguientes()]
+
+    def clean(self):
+        datos = super().clean()
+        if datos.get("estado") == ReporteAmbiental.Estado.DESCARTADO and not datos.get("observacion", "").strip():
+            self.add_error("observacion", "Indique el motivo por el que se descarta el reporte.")
+        return datos
 
 
 class SeguimientoForm(EstiloBootstrapMixin, forms.ModelForm):
@@ -119,6 +132,17 @@ class SeguimientoForm(EstiloBootstrapMixin, forms.ModelForm):
         fields = ("accion", "descripcion")
         widgets = {"descripcion": forms.Textarea(attrs={"rows": 3})}
         help_texts = {"accion": "Ejemplo: inspección, limpieza, notificación a la alcaldía."}
+
+
+class AporteForm(EstiloBootstrapMixin, forms.Form):
+    """Información adicional que el ciudadano agrega a su propio reporte."""
+
+    descripcion = forms.CharField(
+        label="Información adicional",
+        max_length=500,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        help_text="Por ejemplo: el problema empeoró, ahora también queman la basura, etc.",
+    )
 
 
 class AsignarForm(EstiloBootstrapMixin, forms.Form):

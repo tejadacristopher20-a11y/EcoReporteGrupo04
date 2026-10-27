@@ -18,6 +18,7 @@ class EvidenciaInline(admin.TabularInline):
 class SeguimientoInline(admin.TabularInline):
     model = Seguimiento
     extra = 0
+    fields = ("tipo", "accion", "descripcion", "usuario")
 
 
 class HistorialEstadoInline(admin.TabularInline):
@@ -39,3 +40,10 @@ class ReporteAmbientalAdmin(admin.ModelAdmin):
     search_fields = ("titulo", "descripcion")
     readonly_fields = ("estado",)
     inlines = [EvidenciaInline, SeguimientoInline, HistorialEstadoInline]
+
+
+@admin.register(Seguimiento)
+class SeguimientoAdmin(admin.ModelAdmin):
+    list_display = ("reporte", "tipo", "accion", "usuario", "fecha_creacion")
+    list_filter = ("tipo",)
+    search_fields = ("accion", "descripcion", "reporte__titulo")

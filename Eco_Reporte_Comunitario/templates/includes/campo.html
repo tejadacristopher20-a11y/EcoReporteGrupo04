@@ -2,7 +2,18 @@
     <label class="form-label" for="{{ campo.id_for_label }}">
         {{ campo.label }}{% if campo.field.required %} <span class="text-danger">*</span>{% endif %}
     </label>
-    {{ campo }}
+    {% if campo.widget_type == "clearablefile" or campo.widget_type == "file" %}
+        {# Selector de archivos en español: el control del navegador queda oculto y lo abre este botón. #}
+        <div class="eco-archivo">
+            {{ campo }}
+            <label class="btn btn-outline-success" for="{{ campo.id_for_label }}">
+                <i class="bi bi-camera"></i> Seleccionar fotografía
+            </label>
+            <span class="eco-archivo-nombre text-body-secondary">Ningún archivo seleccionado</span>
+        </div>
+    {% else %}
+        {{ campo }}
+    {% endif %}
     {% if campo.help_text %}<div class="form-text">{{ campo.help_text|safe }}</div>{% endif %}
     {% for error in campo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
 </div>

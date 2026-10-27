@@ -10,6 +10,9 @@ class EstiloBootstrapMixin:
             widget = campo.widget
             if isinstance(widget, forms.CheckboxInput):
                 clase = "form-check-input"
+            elif isinstance(widget, forms.FileInput):
+                # El selector del navegador se oculta; lo reemplaza el botón en español de includes/campo.html.
+                clase = "visually-hidden"
             elif isinstance(widget, forms.Select):
                 clase = "form-select"
             else:

@@ -14,6 +14,7 @@ urlpatterns = [
     path("reportes/<int:pk>/evidencia/", views.AgregarEvidenciaView.as_view(), name="agregar_evidencia"),
     path("reportes/<int:pk>/estado/", views.CambiarEstadoView.as_view(), name="cambiar_estado"),
     path("reportes/<int:pk>/seguimiento/", views.RegistrarSeguimientoView.as_view(), name="registrar_seguimiento"),
+    path("reportes/<int:pk>/aporte/", views.AportarInformacionView.as_view(), name="aportar_informacion"),
     path("reportes/<int:pk>/asignar/", views.AsignarReporteView.as_view(), name="asignar"),
     path("mi-panel/", views.PanelView.as_view(), name="panel"),
 ]

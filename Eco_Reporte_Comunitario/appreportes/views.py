@@ -8,6 +8,7 @@ from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
 from .forms import (
+    AporteForm,
     AsignarForm,
     CambiarEstadoForm,
     EvidenciaForm,
@@ -75,6 +76,7 @@ class InicioView(TemplateView):
             pendientes=Count("id", filter=Q(estado=Estado.PENDIENTE)),
             en_proceso=Count("id", filter=Q(estado=Estado.EN_PROCESO)),
             resueltos=Count("id", filter=Q(estado=Estado.RESUELTO)),
+            descartados=Count("id", filter=Q(estado=Estado.DESCARTADO)),
         )
         contexto["criticos"] = ReporteAmbiental.objects.criticos().count()
         contexto["ultimos_reportes"] = reportes_con_relaciones()[:5]
@@ -124,19 +126,23 @@ class ReporteDetailView(DetailView):
             seguimientos=reporte.seguimientos.select_related("usuario__institucion"),
             historial=reporte.historial.select_related("usuario__institucion"),
             asignacion=reporte.asignacion_activa(),
+            motivo_descarte=reporte.motivo_descarte(),
+            esta_activo=reporte.esta_activo(),
+            tiene_seguimiento_registrado=reporte.tiene_seguimiento_registrado(),
             es_propietario=reporte.es_propietario(usuario),
             puede_modificar=reporte.puede_modificar(usuario),
             puede_eliminar=reporte.puede_eliminar(usuario),
             puede_gestionar=puede_gestionar,
-            puede_asignar=usuario.is_authenticated and usuario.puede("asignar_reporte"),
         )
         if reporte.puede_agregar_evidencia(usuario):
             contexto["evidencia_form"] = EvidenciaForm()
+        if reporte.puede_aportar_informacion(usuario):
+            contexto["aporte_form"] = AporteForm()
         if puede_gestionar:
             contexto["seguimiento_form"] = SeguimientoForm()
             if reporte.estados_siguientes():
                 contexto["estado_form"] = CambiarEstadoForm(reporte=reporte)
-        if contexto["puede_asignar"]:
+        if reporte.puede_asignar(usuario):
             contexto["asignar_form"] = AsignarForm()
         return contexto
 
@@ -267,6 +273,19 @@ class RegistrarSeguimientoView(AccionSobreReporteView):
 
     def ejecutar(self, reporte, datos, usuario):
         reporte.registrar_seguimiento(usuario, datos["accion"], datos["descripcion"])
+
+
+class AportarInformacionView(AccionSobreReporteView):
+    """El ciudadano agrega información a su propio reporte mientras el caso está abierto."""
+
+    form_class = AporteForm
+    mensaje_exito = "Tu información fue agregada al reporte."
+
+    def tiene_permiso(self, reporte, usuario):
+        return reporte.puede_aportar_informacion(usuario)
+
+    def ejecutar(self, reporte, datos, usuario):
+        reporte.aportar_informacion(usuario, datos["descripcion"])
 
 
 class AsignarReporteView(AccionSobreReporteView):

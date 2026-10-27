@@ -23,8 +23,21 @@
         </div>
     </div>
 
+    {% if reporte.estado == "DESCARTADO" %}
+        <div class="alert alert-secondary py-2">
+            <i class="bi bi-x-circle"></i> <strong>Reporte descartado.</strong>
+            {% if motivo_descarte %}Motivo: {{ motivo_descarte }}{% endif %}
+        </div>
+    {% endif %}
+
     {% if es_propietario and not puede_modificar %}
-        <div class="alert alert-info py-2 small">Tu reporte ya está siendo atendido, por eso ya no se puede editar ni eliminar.</div>
+        <div class="alert alert-info py-2 small">
+            {% if esta_activo %}
+                Tu reporte ya está siendo atendido: ya no puedes editarlo ni eliminarlo, pero sí agregar fotografías e información adicional.
+            {% else %}
+                Este caso está cerrado; solo puedes consultarlo.
+            {% endif %}
+        </div>
     {% endif %}
 
     <div class="row g-4">
@@ -76,18 +89,37 @@
                 </form>
             {% endif %}
 
-            <h2 class="h5">Seguimiento</h2>
+            <h2 class="h5">Seguimiento y aportes</h2>
             {% for seguimiento in seguimientos %}
-                <div class="border-start border-3 border-success ps-3 mb-3">
-                    <div class="fw-semibold">{{ seguimiento.accion }}</div>
-                    <div class="eco-texto">{{ seguimiento.descripcion }}</div>
-                    <div class="small text-body-secondary">
-                        {{ seguimiento.fecha_creacion|date:"d/m/Y H:i" }} · {{ seguimiento.usuario.get_rol_display }}{% if seguimiento.usuario.institucion %} de {{ seguimiento.usuario.institucion }}{% endif %}
+                {% if seguimiento.es_aporte_ciudadano %}
+                    <div class="border-start border-3 eco-borde-aporte ps-3 mb-3">
+                        <span class="badge eco-aporte-etiqueta mb-1"><i class="bi bi-person"></i> Aporte del ciudadano</span>
+                        <div class="eco-texto">{{ seguimiento.descripcion }}</div>
+                        <div class="small text-body-secondary">{{ seguimiento.fecha_creacion|date:"d/m/Y H:i" }}</div>
                     </div>
-                </div>
+                {% else %}
+                    <div class="border-start border-3 border-success ps-3 mb-3">
+                        <div class="fw-semibold">{{ seguimiento.accion }}</div>
+                        <div class="eco-texto">{{ seguimiento.descripcion }}</div>
+                        <div class="small text-body-secondary">
+                            {{ seguimiento.fecha_creacion|date:"d/m/Y H:i" }} · {{ seguimiento.usuario.get_rol_display }}{% if seguimiento.usuario.institucion %} de {{ seguimiento.usuario.institucion }}{% endif %}
+                        </div>
+                    </div>
+                {% endif %}
             {% empty %}
                 <p class="text-body-secondary small">Todavía no se han registrado acciones de seguimiento.</p>
             {% endfor %}
+
+            {% if aporte_form %}
+                <form method="post" action="{% url 'appreportes:aportar_informacion' reporte.pk %}" class="card eco-tarjeta mb-4">
+                    <div class="card-body">
+                        <h3 class="h6">Agregar información a tu reporte</h3>
+                        {% csrf_token %}
+                        {% include "includes/formulario.html" with form=aporte_form %}
+                        <button type="submit" class="btn btn-outline-success btn-sm">Agregar información</button>
+                    </div>
+                </form>
+            {% endif %}
         </div>
 
         <div class="col-lg-4">
@@ -98,7 +130,7 @@
                         {% csrf_token %}
                         {% include "includes/formulario.html" with form=estado_form %}
                         <button type="submit" class="btn btn-success btn-sm">Actualizar estado</button>
-                        {% if reporte.estado == "EN_PROCESO" and not seguimientos %}
+                        {% if reporte.estado == "EN_PROCESO" and not tiene_seguimiento_registrado %}
                             <p class="small text-body-secondary mt-2 mb-0">Para marcarlo como resuelto, primero registra un seguimiento.</p>
                         {% endif %}
                     </div>

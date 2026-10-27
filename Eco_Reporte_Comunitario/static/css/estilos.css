@@ -42,6 +42,20 @@
     color: #0a3622;
 }
 
+.eco-estado-descartado {
+    background-color: #e2e3e5;
+    color: #41464b;
+}
+
+.eco-borde-aporte {
+    border-color: #6f42c1 !important;
+}
+
+.eco-aporte-etiqueta {
+    background-color: #e2d9f3;
+    color: #3d1a78;
+}
+
 .eco-gravedad-bajo {
     background-color: #e2e3e5;
     color: #2b2f32;
@@ -85,6 +99,32 @@
 .eco-icono-grande {
     font-size: 3rem;
     color: var(--eco-verde);
+}
+
+/* Selector de archivos en español: el control nativo se oculta pero sigue siendo accesible con el teclado. */
+.eco-archivo {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+}
+
+.eco-archivo input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.eco-archivo:focus-within label {
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+}
+
+.eco-archivo-nombre {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .eco-footer {

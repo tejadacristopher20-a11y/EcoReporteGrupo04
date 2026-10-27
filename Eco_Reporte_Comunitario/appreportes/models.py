@@ -41,10 +41,11 @@ class ReporteQuerySet(models.QuerySet):
             consulta = consulta.filter(ubicacion__comunidad=comunidad)
         return consulta
 
+    def activos(self):
+        return self.filter(estado__in=ReporteAmbiental.ESTADOS_ACTIVOS)
+
     def criticos(self):
-        return self.filter(nivel_gravedad=ReporteAmbiental.NivelGravedad.ALTO).exclude(
-            estado=ReporteAmbiental.Estado.RESUELTO
-        )
+        return self.activos().filter(nivel_gravedad=ReporteAmbiental.NivelGravedad.ALTO)
 
 
 class ReporteAmbiental(ModeloBase):
@@ -59,13 +60,18 @@ class ReporteAmbiental(ModeloBase):
         PENDIENTE = "PENDIENTE", "Pendiente"
         EN_PROCESO = "EN_PROCESO", "En proceso"
         RESUELTO = "RESUELTO", "Resuelto"
+        DESCARTADO = "DESCARTADO", "Descartado"
 
-    # Transiciones permitidas. RESUELTO → EN_PROCESO permite reabrir un caso.
+    # Transiciones permitidas. Desde RESUELTO y DESCARTADO solo se puede reabrir el caso.
     TRANSICIONES = {
-        Estado.PENDIENTE: {Estado.EN_PROCESO},
-        Estado.EN_PROCESO: {Estado.RESUELTO},
+        Estado.PENDIENTE: {Estado.EN_PROCESO, Estado.DESCARTADO},
+        Estado.EN_PROCESO: {Estado.RESUELTO, Estado.DESCARTADO},
         Estado.RESUELTO: {Estado.EN_PROCESO},
+        Estado.DESCARTADO: {Estado.PENDIENTE},
     }
+
+    # Casos que siguen abiertos: el ciudadano aún puede agregar fotos e información.
+    ESTADOS_ACTIVOS = (Estado.PENDIENTE, Estado.EN_PROCESO)
 
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="reportes")
     categoria = models.ForeignKey(
@@ -118,8 +124,12 @@ class ReporteAmbiental(ModeloBase):
     def es_propietario(self, usuario):
         return usuario.is_authenticated and self.usuario_id == usuario.pk
 
+    def esta_activo(self):
+        """Pendiente o En proceso: el caso sigue abierto."""
+        return self.estado in self.ESTADOS_ACTIVOS
+
     def puede_modificar(self, usuario):
-        """El ciudadano solo edita sus reportes mientras siguen pendientes."""
+        """El ciudadano solo edita su reporte mientras está pendiente; el administrador, cualquiera."""
         if not usuario.is_authenticated:
             return False
         if usuario.puede("modificar_cualquier_reporte"):
@@ -131,6 +141,7 @@ class ReporteAmbiental(ModeloBase):
         )
 
     def puede_eliminar(self, usuario):
+        """El ciudadano solo elimina su reporte mientras está pendiente; el administrador, cualquiera."""
         if not usuario.is_authenticated:
             return False
         if usuario.puede("eliminar_cualquier_reporte"):
@@ -142,16 +153,32 @@ class ReporteAmbiental(ModeloBase):
         )
 
     def puede_gestionar(self, usuario):
-        """Cambiar estado y registrar seguimiento: el administrador, o el responsable de la institución asignada."""
-        if not usuario.is_authenticated or not usuario.puede("cambiar_estado"):
-            return False
-        if usuario.puede("asignar_reporte"):
-            return True
-        asignacion = self.asignacion_activa()
-        return asignacion is not None and asignacion.institucion_id == usuario.institucion_id
+        """Cambiar estado y registrar seguimiento: cualquier responsable o el administrador."""
+        return usuario.is_authenticated and usuario.puede("cambiar_estado")
+
+    def puede_asignar(self, usuario):
+        """Asignar a una institución: responsable o administrador, solo mientras el caso está abierto."""
+        return usuario.is_authenticated and usuario.puede("asignar_reporte") and self.esta_activo()
 
     def puede_agregar_evidencia(self, usuario):
-        return self.puede_modificar(usuario) or self.puede_gestionar(usuario)
+        """El responsable y el administrador siempre; el dueño solo mientras el caso está abierto."""
+        if self.puede_gestionar(usuario):
+            return True
+        return self.es_propietario(usuario) and usuario.puede("agregar_evidencia") and self.esta_activo()
+
+    def puede_aportar_informacion(self, usuario):
+        """Solo el dueño del reporte, mientras el caso está abierto."""
+        return self.es_propietario(usuario) and usuario.puede("aportar_informacion") and self.esta_activo()
+
+    def tiene_seguimiento_registrado(self):
+        """Los aportes del ciudadano no cuentan: debe haber una acción registrada por quien atiende el caso."""
+        return self.seguimientos.filter(tipo=Seguimiento.Tipo.SEGUIMIENTO).exists()
+
+    def motivo_descarte(self):
+        if self.estado != self.Estado.DESCARTADO:
+            return ""
+        cambio = self.historial.filter(estado_nuevo=self.Estado.DESCARTADO).first()
+        return cambio.observacion if cambio else ""
 
     def puede_cambiar_a(self, nuevo_estado):
         return nuevo_estado in self.TRANSICIONES[self.estado]
@@ -167,8 +194,10 @@ class ReporteAmbiental(ModeloBase):
             raise ValidationError(
                 f"No se permite pasar de {self.get_estado_display()} a {self.Estado(nuevo_estado).label}."
             )
-        if nuevo_estado == self.Estado.RESUELTO and not self.seguimientos.exists():
+        if nuevo_estado == self.Estado.RESUELTO and not self.tiene_seguimiento_registrado():
             raise ValidationError("Registre al menos un seguimiento antes de marcar el reporte como resuelto.")
+        if nuevo_estado == self.Estado.DESCARTADO and not observacion.strip():
+            raise ValidationError("Indique el motivo por el que se descarta el reporte.")
 
         with transaction.atomic():
             anterior = self.estado
@@ -189,7 +218,20 @@ class ReporteAmbiental(ModeloBase):
         """RF10."""
         if not self.puede_gestionar(usuario):
             raise PermissionDenied("Este usuario no puede registrar seguimientos en este reporte.")
-        return self.seguimientos.create(usuario=usuario, accion=accion, descripcion=descripcion)
+        return self.seguimientos.create(
+            usuario=usuario, tipo=Seguimiento.Tipo.SEGUIMIENTO, accion=accion, descripcion=descripcion
+        )
+
+    def aportar_informacion(self, usuario, descripcion):
+        """El dueño agrega información sin alterar lo que reportó originalmente."""
+        if not self.puede_aportar_informacion(usuario):
+            raise PermissionDenied("Solo el autor del reporte puede agregar información mientras el caso está abierto.")
+        return self.seguimientos.create(
+            usuario=usuario,
+            tipo=Seguimiento.Tipo.APORTE_CIUDADANO,
+            accion="Información adicional",
+            descripcion=descripcion,
+        )
 
     def agregar_evidencia(self, usuario, imagen, descripcion=""):
         """RF05."""
@@ -200,13 +242,15 @@ class ReporteAmbiental(ModeloBase):
     def asignar_a(self, institucion, usuario, observacion=""):
         """Asigna el reporte a una institución; desactiva la asignación anterior."""
         if not usuario.puede("asignar_reporte"):
-            raise PermissionDenied("Solo un administrador puede asignar reportes.")
+            raise PermissionDenied("Solo el responsable o el administrador pueden asignar reportes.")
+        if not self.esta_activo():
+            raise ValidationError("Solo se pueden asignar reportes pendientes o en proceso.")
         with transaction.atomic():
             self.asignaciones.filter(activa=True).update(activa=False)
             return self.asignaciones.create(institucion=institucion, asignado_por=usuario, observacion=observacion)
 
     def es_critico(self):
-        return self.nivel_gravedad == self.NivelGravedad.ALTO and self.estado != self.Estado.RESUELTO
+        return self.nivel_gravedad == self.NivelGravedad.ALTO and self.esta_activo()
 
     def asignacion_activa(self):
         return self.asignaciones.filter(activa=True).select_related("institucion").first()
@@ -236,10 +280,18 @@ class Evidencia(ModeloBase):
 
 
 class Seguimiento(ModeloBase):
-    """Entidad 9. Composición: se elimina junto con su reporte."""
+    """Entidad 9. Composición: se elimina junto con su reporte.
+
+    Guarda tanto las acciones de quien atiende el caso como los aportes del ciudadano que lo reportó.
+    """
+
+    class Tipo(models.TextChoices):
+        SEGUIMIENTO = "SEGUIMIENTO", "Seguimiento"
+        APORTE_CIUDADANO = "APORTE_CIUDADANO", "Aporte del ciudadano"
 
     reporte = models.ForeignKey(ReporteAmbiental, on_delete=models.CASCADE, related_name="seguimientos")
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="seguimientos")
+    tipo = models.CharField(max_length=20, choices=Tipo.choices, default=Tipo.SEGUIMIENTO)
     accion = models.CharField("acción", max_length=100)
     descripcion = models.CharField("descripción", max_length=500)
 
@@ -248,6 +300,10 @@ class Seguimiento(ModeloBase):
 
     def __str__(self):
         return f"{self.accion} — {self.reporte}"
+
+    @property
+    def es_aporte_ciudadano(self):
+        return self.tipo == self.Tipo.APORTE_CIUDADANO
 
 
 class HistorialEstado(ModeloBase):
