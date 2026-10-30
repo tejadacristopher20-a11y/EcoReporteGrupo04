@@ -324,3 +324,40 @@ Ejemplos:
 |----------|-------------|-----------------|---------------|-----------|
 | Acumulación de basura | Acumulación de basura en lugares no permitidos | 05/10/2026 | 23/10/2026 | Escuela Las Toreras, San Ignacio, Chalatenango |
 
+## Control de acceso
+Se implementaron dos mixins reutilizables:
+       -PermisoRequeridoMixin — exige iniciar sesión y que el rol tenga el permiso necesario.
+       -FiltroReportesMixin — aplica los filtros a cualquier lista de reportes.
+Si un usuario intenta una acción no autorizada, el sistema responde con una página de acceso denegado (403).
+Las entidades de catálogo (Departamento, Distrito, Comunidad, Institución y CategoriaProblema) y los usuarios se gestionan con el panel de administración de Django (/admin/), que ofrece el CRUD completo y solo es accesible para el administrador del sistema.
+
+## 2. Configuración de URLs
+Las rutas se organizaron por aplicación. El archivo principal Eco_Reporte_Comunitario/urls.py incluye las rutas de cada app con include(). Cada ruta tiene un nombre descriptivo (name) y un espacio de nombres (app_name), de modo que las plantillas las llaman por su nombre y no escriben la dirección a mano,
+por ejemplo:
+{% url 'appreportes:detalle' reporte.pk %}
+
+## Rutas principales del proyecto
+- admin/ — panel de administración de Django.
+- cuenta/ — rutas de la aplicación appusuarios.
+- (raíz) — rutas de la aplicación appreportes.
+
+## Rutas de appreportes (app_name = "appreportes")
+/ (inicio) — página de inicio.
+/reportes/ (lista) — lista de reportes con filtros.
+/reportes/nuevo/ (crear) — registrar un reporte.
+/reportes/<id>/ (detalle) — detalle de un reporte.
+/reportes/<id>/editar/ (editar) — modificar un reporte.
+/reportes/<id>/eliminar/ (eliminar) — eliminar un reporte.
+/reportes/<id>/evidencia/ (agregar_evidencia) — agregar fotografía.
+/reportes/<id>/estado/ (cambiar_estado) — cambiar el estado.
+/reportes/<id>/seguimiento/ (registrar_seguimiento) — registrar seguimiento.
+/reportes/<id>/aporte/ (aportar_informacion) — aporte del ciudadano.
+/reportes/<id>/asignar/ (asignar) — asignar a una institución.
+/mi-panel/ (panel) — panel personal según el rol.
+
+## Rutas de appusuarios (app_name = "appusuarios")
+/cuenta/registro/ (registro) — crear cuenta.
+/cuenta/ingresar/ (ingresar) — iniciar sesión.
+/cuenta/salir/ (salir) — cerrar sesión.
+/cuenta/perfil/ (perfil) — mi perfil.
+
