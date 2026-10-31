@@ -390,3 +390,50 @@ por ejemplo:
 /cuenta/salir/ (salir) — cerrar sesión.
 /cuenta/perfil/ (perfil) — mi perfil.
 
+## Plantillas HTML
+Se creó una plantilla base reutilizable, templates/base.html, que heredan todas las páginas mediante {% extends "base.html" %}. Contiene:
+- Encabezado y menú de navegación — cambia según el usuario. Los visitantes ven Iniciar sesión y Registrarse; con la sesión iniciada aparecen Mi panel, Nuevo reporte y un menú con el nombre del usuario (Perfil, Cambiar contraseña y Cerrar sesión). El enlace al Panel de administración solo lo ve el administrador.
+- Mensajes del sistema — confirmaciones como "Tu reporte fue registrado", mostradas como alertas.
+- Bloque de contenido — {% block contenido %}, que cada página llena con lo suyo.
+- Pie de página — datos del grupo y de la universidad.
+
+## Plantillas parciales reutilizables (templates/includes/)
+- formulario.html — dibuja cualquier formulario con sus etiquetas, ayudas y errores.
+- campo.html — dibuja un campo individual, incluido el selector de fotografías en español.
+- tarjeta_reporte.html — tarjeta resumida de un reporte, usada en el inicio, la lista y el panel.
+
+## Plantillas por aplicación
+- appreportes/ — inicio.html, reporte_lista.html, reporte_detalle.html, reporte_form.html (sirve para registrar y para modificar) y reporte_confirmar_eliminar.html.
+- appusuarios/ — registro.html, ingresar.html, perfil.html y cambiar_clave.html.
+
+## Interfaz gráfica
+La interfaz se desarrolló con Bootstrap 5 y Bootstrap Icons, complementados con una hoja de estilos propia, static/css/estilos.css, que define la identidad visual del proyecto en tonos verdes.
+
+- Diseño adaptable (RNF01) — la cuadrícula de Bootstrap reorganiza el contenido según el tamaño de la pantalla. En celulares, el menú se convierte en un botón desplegable y las tarjetas se apilan en una columna.
+- Organización clara (RNF06) — contadores de reportes por estado en la página de inicio; tarjetas de reportes con su fotografía, categoría, comunidad, fecha y gravedad; y el detalle del reporte dividido en secciones (descripción, evidencias, seguimiento e historial).
+- Colores por estado y gravedad — Pendiente en amarillo, En proceso en azul, Resuelto en verde y Descartado en gris. Los casos de gravedad alta se marcan con un ícono de alerta.
+- Formularios intuitivos — todos reciben el estilo de Bootstrap automáticamente gracias a la clase EstiloBootstrapMixin; marcan los campos obligatorios y muestran los errores debajo de cada campo. El formulario de reporte está dividido en secciones ("¿Qué está pasando?", "¿Dónde?" y "Evidencia") e incluye un botón para obtener la ubicación actual del dispositivo.
+- Interfaz en español — etiquetas, mensajes, listas de selección y selector de fotografías.
+
+## Integración funcional
+Las vistas, las plantillas y los modelos funcionan conectados entre sí. Toda la información se guarda en la base de datos EcoReporteComunitario de SQL Server, mediante el conector mssql-django y el ODBC Driver for SQL Server. Los datos de conexión se leen desde un archivo .env, que no se sube al repositorio.
+
+## Flujo de la información
+1. El usuario envía un formulario desde una plantilla.
+2. La vista valida los datos con el formulario de Django (RNF02).
+3. Las reglas de negocio están en los métodos de los modelos. Por ejemplo, ReporteAmbiental.cambiar_estado() valida la transición, el permiso y el seguimiento antes de guardar.
+4. El modelo guarda la información en SQL Server, que además aplica sus propias restricciones (llaves primarias y foráneas, campos únicos y restricciones CHECK).
+5. La vista consulta los datos actualizados y los envía a la plantilla para mostrarlos.
+
+## Ejemplos de la integración
+- Registro de un reporte — se guardan, en una sola transacción, la Ubicación, el ReporteAmbiental y su Evidencia.
+- Cambio de estado — crea automáticamente un registro en HistorialEstado.
+- Página de inicio — calcula en tiempo real los contadores por estado.
+- Panel de usuario — consulta los reportes según el rol de quien inició sesión.
+- Fotografías — se almacenan en la carpeta media/ y en la base de datos se guarda la ruta del archivo.
+
+## Roles integrados en las pantallas
+- Visitante — consultar el inicio, la lista y el detalle de los reportes.
+- Ciudadano — registrar reportes; editar y eliminar el suyo mientras está Pendiente; agregar fotos e información mientras el caso está abierto.
+- Responsable — asignar reportes a instituciones, cambiar el estado y registrar seguimiento.
+- Administrador (único) — todo lo anterior, más la gestión de usuarios y catálogos en /admin/.
