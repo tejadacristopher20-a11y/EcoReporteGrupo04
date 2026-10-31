@@ -436,4 +436,4 @@ Las vistas, las plantillas y los modelos funcionan conectados entre sí. Toda la
 - Visitante — consultar el inicio, la lista y el detalle de los reportes.
 - Ciudadano — registrar reportes; editar y eliminar el suyo mientras está Pendiente; agregar fotos e información mientras el caso está abierto.
 - Responsable — asignar reportes a instituciones, cambiar el estado y registrar seguimiento.
-- Administrador (único) — todo lo anterior, más la gestión de usuarios y catálogos en /admin/.
+- Administrador (único) — todo lo anterior más la gestión de usuarios y catálogos en /admin/.
