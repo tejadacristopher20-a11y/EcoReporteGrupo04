@@ -324,12 +324,20 @@ Ejemplos:
 |----------|-------------|-----------------|---------------|-----------|
 | Acumulación de basura | Acumulación de basura en lugares no permitidos | 05/10/2026 | 23/10/2026 | Escuela Las Toreras, San Ignacio, Chalatenango |
 
-## Control de acceso
-Se implementaron dos mixins reutilizables:
-       -PermisoRequeridoMixin — exige iniciar sesión y que el rol tenga el permiso necesario.
-       -FiltroReportesMixin — aplica los filtros a cualquier lista de reportes.
-Si un usuario intenta una acción no autorizada, el sistema responde con una página de acceso denegado (403).
-Las entidades de catálogo (Departamento, Distrito, Comunidad, Institución y CategoriaProblema) y los usuarios se gestionan con el panel de administración de Django (/admin/), que ofrece el CRUD completo y solo es accesible para el administrador del sistema.
+### Semana 6: Vistas, URLs, plantillas, interfaz gráfica, integración y pruebas
+
+## Vistas de Django
+Las vistas del proyecto se desarrollaron como vistas basadas en clases, aplicando los principios de la Programación Orientada a Objetos: herencia, polimorfismo y reutilización de código. Se encuentran en los archivos appreportes/views.py y appusuarios/views.py.
+
+## Operaciones CRUD sobre la entidad principal (ReporteAmbiental)
+
+Consultar lista: ReporteListView (ListView) — muestra todos los reportes con filtros y paginación (RF06, RF11).
+Consultar detalle: ReporteDetailView (DetailView) — muestra un reporte con sus evidencias, seguimiento, historial y asignación.
+Registrar: ReporteCreateView (CreateView) — registra un reporte con su categoría, ubicación, gravedad y fotografía (RF02 a RF05).
+Modificar: ReporteUpdateView (UpdateView) — edita un reporte mientras está Pendiente (RF07).
+Eliminar: ReporteDeleteView (DeleteView) — elimina un reporte, previa confirmación (RF08).
+
+
 
 ## 2. Configuración de URLs
 Las rutas se organizaron por aplicación. El archivo principal Eco_Reporte_Comunitario/urls.py incluye las rutas de cada app con include(). Cada ruta tiene un nombre descriptivo (name) y un espacio de nombres (app_name), de modo que las plantillas las llaman por su nombre y no escriben la dirección a mano,
