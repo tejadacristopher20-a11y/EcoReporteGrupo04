@@ -324,18 +324,39 @@ Ejemplos:
 |----------|-------------|-----------------|---------------|-----------|
 | Acumulación de basura | Acumulación de basura en lugares no permitidos | 05/10/2026 | 23/10/2026 | Escuela Las Toreras, San Ignacio, Chalatenango |
 
-### Semana 6: Vistas, URLs, plantillas, interfaz gráfica, integración y pruebas
+# Semana 6: Vistas, URLs, plantillas, interfaz gráfica, integración y pruebas
 
 ## Vistas de Django
 Las vistas del proyecto se desarrollaron como vistas basadas en clases, aplicando los principios de la Programación Orientada a Objetos: herencia, polimorfismo y reutilización de código. Se encuentran en los archivos appreportes/views.py y appusuarios/views.py.
 
 ## Operaciones CRUD sobre la entidad principal (ReporteAmbiental)
 
-Consultar lista: ReporteListView (ListView) — muestra todos los reportes con filtros y paginación (RF06, RF11).
-Consultar detalle: ReporteDetailView (DetailView) — muestra un reporte con sus evidencias, seguimiento, historial y asignación.
-Registrar: ReporteCreateView (CreateView) — registra un reporte con su categoría, ubicación, gravedad y fotografía (RF02 a RF05).
-Modificar: ReporteUpdateView (UpdateView) — edita un reporte mientras está Pendiente (RF07).
-Eliminar: ReporteDeleteView (DeleteView) — elimina un reporte, previa confirmación (RF08).
+- Consultar lista: ReporteListView (ListView) — muestra todos los reportes con filtros y paginación (RF06, RF11).
+- Consultar detalle: ReporteDetailView (DetailView) — muestra un reporte con sus evidencias, seguimiento, historial y asignación.
+- Registrar: ReporteCreateView (CreateView) — registra un reporte con su categoría, ubicación, gravedad y fotografía (RF02 a RF05).
+- Modificar: ReporteUpdateView (UpdateView) — edita un reporte mientras está Pendiente (RF07).
+- Eliminar: ReporteDeleteView (DeleteView) — elimina un reporte, previa confirmación (RF08).
+
+## Vistas de gestión del reporte
+Estas vistas heredan de una clase base propia, AccionSobreReporteView. Esa clase concentra el procedimiento común: buscar el reporte, validar el permiso, validar el formulario y mostrar el resultado. Cada vista hija solo define su permiso y la acción que ejecuta.
+- AgregarEvidenciaView — agrega fotografías a un reporte (RF05).
+- CambiarEstadoView — cambia el estado: Pendiente, En proceso, Resuelto o Descartado (RF09).
+- RegistrarSeguimientoView — registra las acciones de seguimiento (RF10).
+- AportarInformacionView — permite al ciudadano agregar información adicional a su reporte.
+- AsignarReporteView — asigna el reporte a una institución.
+
+## Otras vistas
+- InicioView — página principal con contadores por estado y los últimos reportes.
+- PanelView — panel personal: cada rol ve los reportes que le corresponden (polimorfismo).
+- RegistroView, IngresoView y SalidaView — registro, inicio y cierre de sesión (RF01).
+- PerfilView y CambiarClaveView — modificación de los datos personales y de la contraseña.
+
+## Control de acceso
+Se implementaron dos mixins reutilizables:
+- PermisoRequeridoMixin — exige iniciar sesión y que el rol tenga el permiso necesario.
+- FiltroReportesMixin — aplica los filtros a cualquier lista de reportes.
+
+Si un usuario intenta una acción no autorizada, el sistema responde con una página de acceso denegado (403). Las entidades de catálogo (Departamento, Distrito, Comunidad, Institución y CategoriaProblema) y los usuarios se gestionan con el panel de administración de Django (/admin/), que ofrece el CRUD completo y solo es accesible para el administrador del sistema.
 
 
 
