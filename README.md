@@ -4,8 +4,7 @@ EcoReporte Comunitario
 
 #### Descripción:
 
-EcoReporte Comunitario es un proyecto de proyección social orientado al desarrollo de una aplicación web para registrar,
-organizar, consultar y dar seguimiento a problemáticas ambientales identificadas en una comunidad.
+EcoReporte Comunitario es un proyecto de proyección social orientado al desarrollo de una aplicación web para registrar,organizar, consultar y dar seguimiento a problemáticas ambientales identificadas en una comunidad.
 Actualmente, situaciones como la proliferación de botaderos de basura a cielo abierto, el vertido clandestino
 de aguas residuales o contaminantes, la quema de desechos a cielo abierto y la tala no autorizada de árboles se
 gestionan de forma fragmentada o quedan invisibilizadas por la falta de un canal directo entre los ciudadanos y
