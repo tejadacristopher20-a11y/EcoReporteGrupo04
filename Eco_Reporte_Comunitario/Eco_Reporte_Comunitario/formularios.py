@@ -6,7 +6,7 @@ class EstiloBootstrapMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for campo in self.fields.values():
+        for campo in self.fields.values(): 
             widget = campo.widget
             if isinstance(widget, forms.CheckboxInput):
                 clase = "form-check-input"
