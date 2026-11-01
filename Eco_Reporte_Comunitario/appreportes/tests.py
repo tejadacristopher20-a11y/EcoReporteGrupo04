@@ -1,8 +1,14 @@
 from datetime import date
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
+from Eco_Reporte_Comunitario.restricciones import (
+    MINIMO_DESCRIPCION_REPORTE,
+    MINIMO_REFERENCIA,
+    MINIMO_TITULO_REPORTE,
+    ValidadorTextoLibre,
+)
 from appinstituciones.models import Institucion
 from appterritorio.models import Comunidad, Ubicacion
 from appusuarios.models import Administrador, Ciudadano, Responsable, Usuario
@@ -234,6 +240,46 @@ class ReporteAmbientalTests(TestCase):
         self.assertEqual(ReporteAmbiental.objects.filtrar(nivel_gravedad="ALTO").count(), 2)
         self.assertEqual(list(ReporteAmbiental.objects.criticos()), [alto])
         self.assertEqual(ReporteAmbiental.objects.filtrar(comunidad=self.ubicacion.comunidad).count(), 3)
+
+
+class ValidadorTextoLibreTests(SimpleTestCase):
+    """Las reglas de texto libre, con ejemplos válidos e inválidos."""
+
+    def rechaza(self, validador, texto):
+        with self.assertRaises(ValidationError, msg=f"Debió rechazar {texto!r}"):
+            validador(texto)
+
+    def test_titulo(self):
+        validador = ValidadorTextoLibre(*MINIMO_TITULO_REPORTE)
+        validador("Basura acumulada en la quebrada")
+        for texto in ("x#$%&@", "Basura", "asdfgh qwerty!!!!", "Quema @ escuela"):
+            self.rechaza(validador, texto)
+
+    def test_descripcion(self):
+        validador = ValidadorTextoLibre(*MINIMO_DESCRIPCION_REPORTE)
+        validador("Basura en el río")
+        validador("Hay basura desde hace una semana. Llamar al 7000-0000.")
+        for texto in ("123456789 asdfghjkl 987654321", "aaaaaaaaaaaaaaaaaa", "Basura en sdfghj río", "Basura río"):
+            self.rechaza(validador, texto)
+
+    def test_referencia(self):
+        validador = ValidadorTextoLibre(*MINIMO_REFERENCIA)
+        validador("Frente a la escuela")
+        validador("Casa 12, calle principal")
+        for texto in ("12345", "####", "abc", "Calle"):
+            self.rechaza(validador, texto)
+
+    def test_silabas_repetidas_y_letras_mezcladas_con_numeros(self):
+        validador = ValidadorTextoLibre(*MINIMO_TITULO_REPORTE)
+        for texto in ("erererereere4erere ererer4 erererere", "Basura jajajaja río", "Basura en calle5"):
+            self.rechaza(validador, texto)
+        validador("Basura en la 2da calle")
+        validador("Basura en la calle 5, casa 12")
+
+    def test_palabras_demasiado_largas_y_siglas(self):
+        validador = ValidadorTextoLibre(*MINIMO_DESCRIPCION_REPORTE)
+        self.rechaza(validador, "Basura en asdkjhaskdjhaksjdhakjsdhasd")
+        validador("Se avisó al MARN del problema")
 
 
 class SuperusuarioTests(TestCase):

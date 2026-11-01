@@ -2,6 +2,11 @@ from django.contrib import admin
 
 from .models import CategoriaProblema, Evidencia, HistorialEstado, ReporteAmbiental, Seguimiento
 
+# Sin borrado en bloque en todo el panel: la confirmación de esa acción es la respuesta a un formulario
+# (POST) y, al volver con «Atrás», el navegador pide reenviarlo. Se elimina desde la ficha de cada
+# registro (botón «Eliminar»), que sí redirige después de confirmar.
+admin.site.disable_action("delete_selected")
+
 
 @admin.register(CategoriaProblema)
 class CategoriaProblemaAdmin(admin.ModelAdmin):

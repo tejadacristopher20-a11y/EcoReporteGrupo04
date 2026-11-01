@@ -132,6 +132,13 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+    # Reglas propias: al menos un número y al menos un símbolo.
+    {
+        'NAME': 'appusuarios.validadores_clave.ContieneNumeroValidator',
+    },
+    {
+        'NAME': 'appusuarios.validadores_clave.ContieneSimboloValidator',
+    },
 ]
 
 

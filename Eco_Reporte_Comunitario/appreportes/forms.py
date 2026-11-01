@@ -2,11 +2,30 @@ from django import forms
 from django.db import transaction
 
 from Eco_Reporte_Comunitario.formularios import EstiloBootstrapMixin
+from Eco_Reporte_Comunitario.restricciones import (
+    MINIMO_DESCRIPCION_REPORTE,
+    MINIMO_REFERENCIA,
+    MINIMO_TITULO_REPORTE,
+)
 
-from appinstituciones.models import Institucion
+from appinstituciones.models import AsignacionReporte, Institucion
 from appterritorio.models import Comunidad, Ubicacion
 
-from .models import CategoriaProblema, Evidencia, ReporteAmbiental, Seguimiento
+from .models import CategoriaProblema, Evidencia, HistorialEstado, ReporteAmbiental, Seguimiento
+
+
+def campo_del_modelo(modelo, nombre, **kwargs):
+    """Campo de formulario con las mismas validaciones que el campo del modelo.
+
+    formfield() no copia los validadores propios del modelo (por ejemplo, el de texto libre),
+    así que se agregan aquí; sin ellos, el dato inválido llegaría hasta SQL Server.
+    """
+    campo_modelo = modelo._meta.get_field(nombre)
+    campo = campo_modelo.formfield(**kwargs)
+    tipos_existentes = {type(v) for v in campo.validators}
+    campo.validators += [v for v in campo_modelo.validators if type(v) not in tipos_existentes]
+    return campo
+
 
 TAMANO_MAXIMO_FOTO = 5 * 1024 * 1024  # 5 MB
 
@@ -38,10 +57,20 @@ class ReporteForm(EstiloBootstrapMixin, forms.ModelForm):
     """RF02, RF03, RF04 y RF05: el reporte, su ubicación y la primera fotografía en un solo formulario."""
 
     comunidad = forms.ModelChoiceField(Comunidad.objects.select_related("distrito__departamento"))
-    referencia = forms.CharField(
-        max_length=200, help_text="Ejemplo: frente a la escuela, a la orilla de la quebrada."
+    referencia = campo_del_modelo(
+        Ubicacion,
+        "referencia",
+        help_text=(
+            f"Mínimo {MINIMO_REFERENCIA[0]} caracteres y {MINIMO_REFERENCIA[1]} palabras. "
+            "Ejemplo: frente a la escuela, a la orilla de la quebrada."
+        ),
     )
-    direccion = forms.CharField(label="Dirección", max_length=250, required=False)
+    direccion = campo_del_modelo(
+        Ubicacion,
+        "direccion",
+        label="Dirección",
+        help_text=f"Opcional. Si la escribe: mínimo {MINIMO_REFERENCIA[0]} caracteres y {MINIMO_REFERENCIA[1]} palabras.",
+    )
     latitud = forms.DecimalField(max_digits=10, decimal_places=7, min_value=-90, max_value=90, required=False)
     longitud = forms.DecimalField(max_digits=10, decimal_places=7, min_value=-180, max_value=180, required=False)
     foto = forms.ImageField(
@@ -58,6 +87,16 @@ class ReporteForm(EstiloBootstrapMixin, forms.ModelForm):
             "fecha_incidente": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         }
         labels = {"nivel_gravedad": "Nivel de gravedad"}
+        help_texts = {
+            "titulo": (
+                f"Mínimo {MINIMO_TITULO_REPORTE[0]} caracteres y {MINIMO_TITULO_REPORTE[1]} palabras. "
+                "Ejemplo: Basura acumulada en la quebrada."
+            ),
+            "descripcion": (
+                f"Mínimo {MINIMO_DESCRIPCION_REPORTE[0]} caracteres y {MINIMO_DESCRIPCION_REPORTE[1]} palabras. "
+                "Ejemplo: Hay basura en el río desde hace una semana."
+            ),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -106,10 +145,10 @@ class CambiarEstadoForm(EstiloBootstrapMixin, forms.Form):
     """RF09."""
 
     estado = forms.ChoiceField(label="Nuevo estado")
-    observacion = forms.CharField(
+    observacion = campo_del_modelo(
+        HistorialEstado,
+        "observacion",
         label="Observación",
-        max_length=300,
-        required=False,
         help_text="Obligatoria si el reporte se descarta (por ejemplo: duplicado, falso o fuera de la comunidad).",
     )
 
@@ -137,9 +176,10 @@ class SeguimientoForm(EstiloBootstrapMixin, forms.ModelForm):
 class AporteForm(EstiloBootstrapMixin, forms.Form):
     """Información adicional que el ciudadano agrega a su propio reporte."""
 
-    descripcion = forms.CharField(
+    descripcion = campo_del_modelo(
+        Seguimiento,
+        "descripcion",
         label="Información adicional",
-        max_length=500,
         widget=forms.Textarea(attrs={"rows": 3}),
         help_text="Por ejemplo: el problema empeoró, ahora también queman la basura, etc.",
     )
@@ -147,4 +187,4 @@ class AporteForm(EstiloBootstrapMixin, forms.Form):
 
 class AsignarForm(EstiloBootstrapMixin, forms.Form):
     institucion = forms.ModelChoiceField(Institucion.objects.filter(activa=True), label="Institución")
-    observacion = forms.CharField(label="Observación", max_length=300, required=False)
+    observacion = campo_del_modelo(AsignacionReporte, "observacion", label="Observación")

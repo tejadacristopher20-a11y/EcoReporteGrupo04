@@ -60,7 +60,7 @@ class VistasReportesTests(TestCase):
         ubicacion = Ubicacion.objects.create(comunidad=self.comunidad, referencia="Calle principal")
         return ReporteAmbiental.objects.create(
             usuario=usuario or self.ciudadano, categoria=self.categoria, ubicacion=ubicacion,
-            titulo="Basura acumulada", descripcion="Hay basura", fecha_incidente=date(2026, 10, 1),
+            titulo="Basura acumulada", descripcion="Hay basura en la calle", fecha_incidente=date(2026, 10, 1),
             nivel_gravedad="MEDIO",
         )
 
@@ -249,3 +249,62 @@ class VistasReportesTests(TestCase):
         self.assertEqual(respuesta.context["page_obj"].paginator.count, 0)
         respuesta = self.client.get(reverse("appreportes:lista"), {"buscar": "basura", "estado": "PENDIENTE"})
         self.assertEqual(respuesta.context["page_obj"].paginator.count, 1)
+
+    # --- Validación de textos: alertas debajo de cada campo, sin páginas de error ---
+
+    def test_datos_invalidos_muestran_alertas_bajo_cada_campo(self):
+        self.client.force_login(self.ciudadano)
+        respuesta = self.client.post(reverse("appreportes:crear"), self.datos_reporte(
+            titulo="x#$%&@",
+            descripcion="123456789 asdfghjkl 987654321",
+            referencia="12345",
+        ))
+        self.assertEqual(respuesta.status_code, 200)
+        errores = respuesta.context["form"].errors
+        self.assertIn("titulo", errores)
+        self.assertIn("descripcion", errores)
+        self.assertIn("referencia", errores)
+        self.assertContains(respuesta, "No se permiten estos caracteres")
+        self.assertContains(respuesta, "No escriba más de 8 números seguidos.")
+        self.assertContains(respuesta, "El texto debe incluir letras")
+        self.assertFalse(ReporteAmbiental.objects.exists())
+
+    def test_descripcion_corta_de_tres_palabras_es_valida(self):
+        self.client.force_login(self.ciudadano)
+        self.client.post(reverse("appreportes:crear"), self.datos_reporte(descripcion="Basura en el río"))
+        self.assertTrue(ReporteAmbiental.objects.filter(descripcion="Basura en el río").exists())
+
+    def test_seguimiento_invalido_muestra_alerta_en_el_detalle(self):
+        reporte = self.crear_reporte()
+        self.client.force_login(self.responsable)
+        respuesta = self.client.post(
+            reverse("appreportes:registrar_seguimiento", args=[reporte.pk]),
+            {"accion": "@@@@", "descripcion": "sdfgh qwrtp"},
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "No se permiten estos caracteres")
+        self.assertContains(respuesta, "no parece una palabra")
+        self.assertEqual(reporte.seguimientos.count(), 0)
+
+    def test_aporte_invalido_no_se_guarda(self):
+        reporte = self.crear_reporte()
+        self.client.force_login(self.ciudadano)
+        respuesta = self.client.post(
+            reverse("appreportes:aportar_informacion", args=[reporte.pk]), {"descripcion": "1234567890123"}
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "No escriba más de 8 números seguidos.")
+        self.assertEqual(reporte.seguimientos.count(), 0)
+
+    def test_reporte_inexistente_vuelve_a_la_lista_con_aviso(self):
+        respuesta = self.client.get(reverse("appreportes:detalle", args=[99999]), follow=True)
+        self.assertRedirects(respuesta, reverse("appreportes:lista"))
+        self.assertContains(respuesta, "El reporte que buscas no existe o fue eliminado.")
+
+        self.client.force_login(self.admin)
+        for nombre in ("editar", "eliminar"):
+            with self.subTest(vista=nombre):
+                respuesta = self.client.get(reverse(f"appreportes:{nombre}", args=[99999]))
+                self.assertRedirects(respuesta, reverse("appreportes:lista"))
+        respuesta = self.client.post(reverse("appreportes:cambiar_estado", args=[99999]), {"estado": "EN_PROCESO"})
+        self.assertRedirects(respuesta, reverse("appreportes:lista"))

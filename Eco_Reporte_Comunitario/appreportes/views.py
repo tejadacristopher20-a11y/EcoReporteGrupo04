@@ -1,11 +1,15 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
-from django.shortcuts import get_object_or_404, redirect
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
+
+from Eco_Reporte_Comunitario.restricciones import mensaje_restriccion_violada
 
 from .forms import (
     AporteForm,
@@ -40,6 +44,33 @@ class PermisoRequeridoMixin(LoginRequiredMixin):
         ):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
+
+
+class ReporteExistenteMixin:
+    """Si el reporte no existe (fue eliminado o la dirección es incorrecta), vuelve a la lista con un aviso
+    en lugar de mostrar la página de error «No encontrado»."""
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            return super().dispatch(request, *args, **kwargs)
+        except Http404:
+            messages.warning(request, "El reporte que buscas no existe o fue eliminado.")
+            return redirect("appreportes:lista")
+
+
+class GuardarReporteMixin:
+    """Guarda el formulario del reporte; si SQL Server rechaza algún dato, muestra el motivo en el formulario."""
+
+    mensaje_exito = ""
+
+    def form_valid(self, form):
+        try:
+            self.object = form.guardar(self.request.user)
+        except IntegrityError as error:
+            form.add_error(None, mensaje_restriccion_violada(error))
+            return self.form_invalid(form)
+        messages.success(self.request, self.mensaje_exito)
+        return redirect(self.object)
 
 
 class FiltroReportesMixin:
@@ -110,7 +141,7 @@ class PanelView(LoginRequiredMixin, FiltroReportesMixin, ListView):
         return contexto
 
 
-class ReporteDetailView(DetailView):
+class ReporteDetailView(ReporteExistenteMixin, DetailView):
     template_name = "appreportes/reporte_detalle.html"
     context_object_name = "reporte"
 
@@ -147,27 +178,24 @@ class ReporteDetailView(DetailView):
         return contexto
 
 
-class ReporteCreateView(PermisoRequeridoMixin, CreateView):
+class ReporteCreateView(PermisoRequeridoMixin, GuardarReporteMixin, CreateView):
     """RF02."""
 
     permiso_requerido = "crear_reporte"
     form_class = ReporteForm
     template_name = "appreportes/reporte_form.html"
     extra_context = {"titulo_pagina": "Nuevo reporte"}
-
-    def form_valid(self, form):
-        self.object = form.guardar(self.request.user)
-        messages.success(self.request, "Tu reporte fue registrado. ¡Gracias por cuidar tu comunidad!")
-        return redirect(self.object)
+    mensaje_exito = "Tu reporte fue registrado. ¡Gracias por cuidar tu comunidad!"
 
 
-class ReporteUpdateView(LoginRequiredMixin, UpdateView):
+class ReporteUpdateView(ReporteExistenteMixin, LoginRequiredMixin, GuardarReporteMixin, UpdateView):
     """RF07."""
 
     model = ReporteAmbiental
     form_class = ReporteForm
     template_name = "appreportes/reporte_form.html"
     extra_context = {"titulo_pagina": "Editar reporte"}
+    mensaje_exito = "El reporte fue actualizado."
 
     def get_object(self, queryset=None):
         reporte = super().get_object(queryset)
@@ -175,13 +203,8 @@ class ReporteUpdateView(LoginRequiredMixin, UpdateView):
             raise PermissionDenied
         return reporte
 
-    def form_valid(self, form):
-        self.object = form.guardar(self.request.user)
-        messages.success(self.request, "El reporte fue actualizado.")
-        return redirect(self.object)
 
-
-class ReporteDeleteView(LoginRequiredMixin, DeleteView):
+class ReporteDeleteView(ReporteExistenteMixin, LoginRequiredMixin, DeleteView):
     """RF08."""
 
     model = ReporteAmbiental
@@ -200,11 +223,15 @@ class ReporteDeleteView(LoginRequiredMixin, DeleteView):
         return super().form_valid(form)
 
 
-class AccionSobreReporteView(LoginRequiredMixin, View):
-    """Clase base (patrón plantilla) para las acciones que se envían desde el detalle del reporte."""
+class AccionSobreReporteView(ReporteExistenteMixin, LoginRequiredMixin, View):
+    """Clase base (patrón plantilla) para las acciones que se envían desde el detalle del reporte.
+
+    Si los datos no son válidos, vuelve a mostrar el detalle con los errores debajo de cada campo.
+    """
 
     http_method_names = ["post"]
     form_class = None
+    nombre_formulario = None  # Nombre con el que la plantilla del detalle muestra el formulario.
     mensaje_exito = ""
 
     def tiene_permiso(self, reporte, usuario):
@@ -223,20 +250,32 @@ class AccionSobreReporteView(LoginRequiredMixin, View):
         form = self.form_class(request.POST, request.FILES, **self.get_form_kwargs(reporte))
         if form.is_valid():
             try:
-                self.ejecutar(reporte, form.cleaned_data, request.user)
-                messages.success(request, self.mensaje_exito)
+                with transaction.atomic():
+                    self.ejecutar(reporte, form.cleaned_data, request.user)
             except ValidationError as error:
-                messages.error(request, " ".join(error.messages))
-        else:
-            for errores in form.errors.values():
-                messages.error(request, " ".join(errores))
-        return redirect(reporte)
+                form.add_error(None, error.messages)
+            except IntegrityError as error:
+                form.add_error(None, mensaje_restriccion_violada(error))
+            else:
+                messages.success(request, self.mensaje_exito)
+                return redirect(reporte)
+        return self.mostrar_detalle_con_errores(reporte, form)
+
+    def mostrar_detalle_con_errores(self, reporte, form):
+        messages.error(self.request, "No se pudo guardar. Revise los datos marcados en rojo en el formulario.")
+        detalle = ReporteDetailView()
+        detalle.setup(self.request, pk=reporte.pk)
+        detalle.object = reporte
+        contexto = detalle.get_context_data(object=reporte)
+        contexto[self.nombre_formulario] = form
+        return render(self.request, detalle.template_name, contexto)
 
 
 class AgregarEvidenciaView(AccionSobreReporteView):
     """RF05."""
 
     form_class = EvidenciaForm
+    nombre_formulario = "evidencia_form"
     mensaje_exito = "La fotografía fue agregada."
 
     def tiene_permiso(self, reporte, usuario):
@@ -250,6 +289,7 @@ class CambiarEstadoView(AccionSobreReporteView):
     """RF09."""
 
     form_class = CambiarEstadoForm
+    nombre_formulario = "estado_form"
     mensaje_exito = "El estado del reporte fue actualizado."
 
     def get_form_kwargs(self, reporte):
@@ -266,6 +306,7 @@ class RegistrarSeguimientoView(AccionSobreReporteView):
     """RF10."""
 
     form_class = SeguimientoForm
+    nombre_formulario = "seguimiento_form"
     mensaje_exito = "El seguimiento fue registrado."
 
     def tiene_permiso(self, reporte, usuario):
@@ -279,6 +320,7 @@ class AportarInformacionView(AccionSobreReporteView):
     """El ciudadano agrega información a su propio reporte mientras el caso está abierto."""
 
     form_class = AporteForm
+    nombre_formulario = "aporte_form"
     mensaje_exito = "Tu información fue agregada al reporte."
 
     def tiene_permiso(self, reporte, usuario):
@@ -290,6 +332,7 @@ class AportarInformacionView(AccionSobreReporteView):
 
 class AsignarReporteView(AccionSobreReporteView):
     form_class = AsignarForm
+    nombre_formulario = "asignar_form"
     mensaje_exito = "El reporte fue asignado a la institución."
 
     def tiene_permiso(self, reporte, usuario):

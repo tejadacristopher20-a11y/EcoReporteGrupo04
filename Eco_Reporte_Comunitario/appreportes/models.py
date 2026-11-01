@@ -1,25 +1,75 @@
 import os
 
+from functools import reduce
+from operator import or_
+
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models, transaction
+from django.db.models import Q
+from django.db.models.functions import Cast, Now
 from django.urls import reverse
-from django.utils import timezone
 
 from Eco_Reporte_Comunitario.modelos_base import ModeloBase
+from Eco_Reporte_Comunitario.restricciones import (
+    MINIMO_ACCION_SEGUIMIENTO,
+    MINIMO_DESCRIPCION_FOTO,
+    MINIMO_DESCRIPCION_REPORTE,
+    MINIMO_DESCRIPCION_SEGUIMIENTO,
+    MINIMO_OBSERVACION,
+    MINIMO_TITULO_REPORTE,
+    q_contiene_letras,
+    q_nombre_general,
+    q_texto_libre,
+    q_texto_libre_opcional,
+    q_valor_en,
+    validador_texto,
+    validar_contiene_letras,
+    validar_nombre_general,
+)
+
+
+class NivelGravedad(models.TextChoices):
+    BAJO = "BAJO", "Bajo"
+    MEDIO = "MEDIO", "Medio"
+    ALTO = "ALTO", "Alto"
+
+
+class EstadoReporte(models.TextChoices):
+    PENDIENTE = "PENDIENTE", "Pendiente"
+    EN_PROCESO = "EN_PROCESO", "En proceso"
+    RESUELTO = "RESUELTO", "Resuelto"
+    DESCARTADO = "DESCARTADO", "Descartado"
+
+
+class TipoSeguimiento(models.TextChoices):
+    SEGUIMIENTO = "SEGUIMIENTO", "Seguimiento"
+    APORTE_CIUDADANO = "APORTE_CIUDADANO", "Aporte del ciudadano"
 
 
 class CategoriaProblema(ModeloBase):
     """Entidad 6."""
 
-    nombre = models.CharField(max_length=100, unique=True)
-    descripcion = models.CharField("descripción", max_length=250)
-    activa = models.BooleanField(default=True)
+    nombre = models.CharField(max_length=100, unique=True, validators=[validar_nombre_general])
+    descripcion = models.CharField("descripción", max_length=250, validators=[validar_contiene_letras])
+    activa = models.BooleanField(default=True, db_default=True)
 
     class Meta:
         verbose_name = "categoría de problema"
         verbose_name_plural = "categorías de problema"
         ordering = ["nombre"]
+        constraints = [
+            models.CheckConstraint(
+                condition=q_nombre_general("nombre"),
+                name="ck_categoria_nombre_valido",
+                violation_error_message="El nombre de la categoría solo admite letras, números y signos básicos.",
+            ),
+            models.CheckConstraint(
+                condition=q_contiene_letras("descripcion"),
+                name="ck_categoria_descripcion_valida",
+                violation_error_message="La descripción de la categoría debe incluir letras.",
+            ),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -51,16 +101,8 @@ class ReporteQuerySet(models.QuerySet):
 class ReporteAmbiental(ModeloBase):
     """Entidad 7. El estado solo puede cambiarse con cambiar_estado()."""
 
-    class NivelGravedad(models.TextChoices):
-        BAJO = "BAJO", "Bajo"
-        MEDIO = "MEDIO", "Medio"
-        ALTO = "ALTO", "Alto"
-
-    class Estado(models.TextChoices):
-        PENDIENTE = "PENDIENTE", "Pendiente"
-        EN_PROCESO = "EN_PROCESO", "En proceso"
-        RESUELTO = "RESUELTO", "Resuelto"
-        DESCARTADO = "DESCARTADO", "Descartado"
+    NivelGravedad = NivelGravedad
+    Estado = EstadoReporte
 
     # Transiciones permitidas. Desde RESUELTO y DESCARTADO solo se puede reabrir el caso.
     TRANSICIONES = {
@@ -80,11 +122,19 @@ class ReporteAmbiental(ModeloBase):
     ubicacion = models.ForeignKey(
         "appterritorio.Ubicacion", on_delete=models.PROTECT, related_name="reportes", verbose_name="ubicación"
     )
-    titulo = models.CharField("título", max_length=150)
-    descripcion = models.CharField("descripción", max_length=1000)
+    titulo = models.CharField("título", max_length=150, validators=[validador_texto(MINIMO_TITULO_REPORTE)])
+    descripcion = models.CharField(
+        "descripción", max_length=1000, validators=[validador_texto(MINIMO_DESCRIPCION_REPORTE)]
+    )
     fecha_incidente = models.DateField("fecha del incidente")
     nivel_gravedad = models.CharField(max_length=10, choices=NivelGravedad.choices)
-    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE, editable=False)
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.PENDIENTE,
+        db_default=Estado.PENDIENTE,
+        editable=False,
+    )
 
     objects = ReporteQuerySet.as_manager()
 
@@ -94,6 +144,39 @@ class ReporteAmbiental(ModeloBase):
         verbose_name = "reporte ambiental"
         verbose_name_plural = "reportes ambientales"
         ordering = ["-fecha_creacion"]
+        constraints = [
+            models.CheckConstraint(
+                condition=q_texto_libre("titulo", MINIMO_TITULO_REPORTE),
+                name="ck_reporte_titulo_valido",
+                violation_error_message=(
+                    f"El título debe tener al menos {MINIMO_TITULO_REPORTE[0]} caracteres, "
+                    "incluir letras y no llevar símbolos raros ni cadenas largas de números."
+                ),
+            ),
+            models.CheckConstraint(
+                condition=q_texto_libre("descripcion", MINIMO_DESCRIPCION_REPORTE),
+                name="ck_reporte_descripcion_valida",
+                violation_error_message=(
+                    f"La descripción debe tener al menos {MINIMO_DESCRIPCION_REPORTE[0]} caracteres, "
+                    "incluir letras y no llevar símbolos raros ni cadenas largas de números."
+                ),
+            ),
+            models.CheckConstraint(
+                condition=Q(fecha_incidente__lte=Cast(Now(), models.DateField())),
+                name="ck_reporte_fecha_no_futura",
+                violation_error_message="La fecha del incidente no puede ser futura.",
+            ),
+            models.CheckConstraint(
+                condition=q_valor_en("nivel_gravedad", NivelGravedad.choices),
+                name="ck_reporte_gravedad_valida",
+                violation_error_message="El nivel de gravedad no es válido.",
+            ),
+            models.CheckConstraint(
+                condition=q_valor_en("estado", EstadoReporte.choices),
+                name="ck_reporte_estado_valido",
+                violation_error_message="El estado del reporte no es válido.",
+            ),
+        ]
 
     def __str__(self):
         return self.titulo
@@ -113,11 +196,6 @@ class ReporteAmbiental(ModeloBase):
         for evidencia in self.evidencias.all():
             evidencia.imagen.delete(save=False)
         return super().delete(*args, **kwargs)
-
-    def clean(self):
-        super().clean()
-        if self.fecha_incidente and self.fecha_incidente > timezone.localdate():
-            raise ValidationError({"fecha_incidente": "La fecha del incidente no puede ser futura."})
 
     # --- Reglas de acceso: cada vista pregunta al reporte qué puede hacer el usuario ---
 
@@ -261,11 +339,31 @@ class Evidencia(ModeloBase):
 
     reporte = models.ForeignKey(ReporteAmbiental, on_delete=models.CASCADE, related_name="evidencias")
     imagen = models.ImageField(upload_to="evidencias/%Y/%m/")
-    descripcion = models.CharField("descripción", max_length=300, blank=True)
+    descripcion = models.CharField(
+        "descripción",
+        max_length=300,
+        blank=True,
+        db_default="",
+        validators=[validador_texto(MINIMO_DESCRIPCION_FOTO)],
+    )
 
     class Meta:
         verbose_name_plural = "evidencias"
         ordering = ["fecha_creacion"]
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(imagen=""),
+                name="ck_evidencia_imagen_requerida",
+                violation_error_message="La evidencia debe tener una fotografía.",
+            ),
+            models.CheckConstraint(
+                condition=q_texto_libre_opcional("descripcion", MINIMO_DESCRIPCION_FOTO),
+                name="ck_evidencia_descripcion_valida",
+                violation_error_message=(
+                    "La descripción de la fotografía debe incluir letras y no llevar símbolos raros."
+                ),
+            ),
+        ]
 
     def __str__(self):
         return self.nombre_archivo
@@ -285,18 +383,40 @@ class Seguimiento(ModeloBase):
     Guarda tanto las acciones de quien atiende el caso como los aportes del ciudadano que lo reportó.
     """
 
-    class Tipo(models.TextChoices):
-        SEGUIMIENTO = "SEGUIMIENTO", "Seguimiento"
-        APORTE_CIUDADANO = "APORTE_CIUDADANO", "Aporte del ciudadano"
+    Tipo = TipoSeguimiento
 
     reporte = models.ForeignKey(ReporteAmbiental, on_delete=models.CASCADE, related_name="seguimientos")
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="seguimientos")
-    tipo = models.CharField(max_length=20, choices=Tipo.choices, default=Tipo.SEGUIMIENTO)
-    accion = models.CharField("acción", max_length=100)
-    descripcion = models.CharField("descripción", max_length=500)
+    tipo = models.CharField(
+        max_length=20, choices=Tipo.choices, default=Tipo.SEGUIMIENTO, db_default=Tipo.SEGUIMIENTO
+    )
+    accion = models.CharField("acción", max_length=100, validators=[validador_texto(MINIMO_ACCION_SEGUIMIENTO)])
+    descripcion = models.CharField(
+        "descripción", max_length=500, validators=[validador_texto(MINIMO_DESCRIPCION_SEGUIMIENTO)]
+    )
 
     class Meta:
         ordering = ["-fecha_creacion"]
+        constraints = [
+            models.CheckConstraint(
+                condition=q_valor_en("tipo", TipoSeguimiento.choices),
+                name="ck_seguimiento_tipo_valido",
+                violation_error_message="El tipo de seguimiento no es válido.",
+            ),
+            models.CheckConstraint(
+                condition=q_texto_libre("accion", MINIMO_ACCION_SEGUIMIENTO),
+                name="ck_seguimiento_accion_valida",
+                violation_error_message="La acción debe incluir letras y no llevar símbolos raros.",
+            ),
+            models.CheckConstraint(
+                condition=q_texto_libre("descripcion", MINIMO_DESCRIPCION_SEGUIMIENTO),
+                name="ck_seguimiento_descripcion_valida",
+                violation_error_message=(
+                    f"La descripción debe tener al menos {MINIMO_DESCRIPCION_SEGUIMIENTO[0]} caracteres, "
+                    "incluir letras y no llevar símbolos raros."
+                ),
+            ),
+        ]
 
     def __str__(self):
         return f"{self.accion} — {self.reporte}"
@@ -315,12 +435,42 @@ class HistorialEstado(ModeloBase):
     )
     estado_anterior = models.CharField(max_length=20, choices=ReporteAmbiental.Estado.choices)
     estado_nuevo = models.CharField(max_length=20, choices=ReporteAmbiental.Estado.choices)
-    observacion = models.CharField("observación", max_length=300, blank=True)
+    observacion = models.CharField(
+        "observación",
+        max_length=300,
+        blank=True,
+        db_default="",
+        validators=[validador_texto(MINIMO_OBSERVACION)],
+    )
 
     class Meta:
         verbose_name = "historial de estado"
         verbose_name_plural = "historial de estados"
         ordering = ["-fecha_creacion"]
+        constraints = [
+            # Solo las transiciones de ReporteAmbiental.TRANSICIONES; implica que ambos estados son válidos.
+            models.CheckConstraint(
+                condition=reduce(or_, (
+                    Q(estado_anterior=anterior, estado_nuevo__in=sorted(siguientes))
+                    for anterior, siguientes in ReporteAmbiental.TRANSICIONES.items()
+                )),
+                name="ck_historial_transicion_valida",
+                violation_error_message="Ese cambio de estado no está permitido.",
+            ),
+            models.CheckConstraint(
+                condition=~Q(estado_nuevo=EstadoReporte.DESCARTADO) | q_contiene_letras("observacion"),
+                name="ck_historial_motivo_descarte",
+                violation_error_message="Indique el motivo por el que se descarta el reporte.",
+            ),
+            models.CheckConstraint(
+                condition=q_texto_libre_opcional("observacion", MINIMO_OBSERVACION),
+                name="ck_historial_observacion_valida",
+                violation_error_message=(
+                    f"La observación debe tener al menos {MINIMO_OBSERVACION[0]} caracteres, "
+                    "incluir letras y no llevar símbolos raros."
+                ),
+            ),
+        ]
 
     def __str__(self):
         return f"{self.reporte}: {self.get_estado_anterior_display()} → {self.get_estado_nuevo_display()}"

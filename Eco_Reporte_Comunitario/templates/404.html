@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block titulo %}Página no encontrada · EcoReporte{% endblock %}
+
+{% block contenido %}
+<div class="container py-5 text-center">
+    <i class="bi bi-signpost-split eco-icono-grande"></i>
+    <h1 class="h3 mt-3">No encontramos esta página</h1>
+    <p class="text-body-secondary">Puede que la dirección esté mal escrita o que el contenido haya sido eliminado.</p>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+        <a class="btn btn-success" href="{% url 'appreportes:inicio' %}">Ir al inicio</a>
+        <a class="btn btn-outline-success" href="{% url 'appreportes:lista' %}">Ver reportes</a>
+    </div>
+</div>
+{% endblock %}

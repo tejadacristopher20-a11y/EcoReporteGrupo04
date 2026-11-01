@@ -16,9 +16,15 @@ class RegistroForm(EstiloBootstrapMixin, UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for campo in ("first_name", "last_name", "email"):
+        for campo in ("first_name", "last_name", "email", "telefono"):
             self.fields[campo].required = True
         self.fields["first_name"].widget.attrs["autofocus"] = True
+
+        telefono = self.fields["telefono"]
+        telefono.help_text = "8 números; puede separarlos con un único guion medio. Ejemplo: 7000-0000 o 70000000."
+        telefono.error_messages["required"] = "Escriba su número de teléfono."
+        # Ayudas para el navegador: teclado numérico en celulares y como máximo 9 caracteres (8 números y un guion).
+        telefono.widget.attrs.update({"inputmode": "tel", "maxlength": "9", "placeholder": "7000-0000"})
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()

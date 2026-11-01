@@ -115,13 +115,15 @@ El sistema se organiza en **4 aplicaciones de Django** y **12 entidades**, cada 
 - Una **CategoriaProblema** agrupa muchos **Reportes** (agregación: no se puede eliminar una categoría que tenga reportes).
 - **Departamento → Distrito → Comunidad → Ubicacion → Reporte** (cada nivel 1:N).
 - Un **Reporte** contiene muchas **Evidencias**, **Seguimientos** y registros de **HistorialEstado** (composición: si se elimina el reporte, se eliminan con él).
-- Una **Institucion** recibe muchas **Asignaciones**; un **Usuario** Responsable pertenece a una Institución.
+- Una **Institucion** recibe muchas **Asignaciones**, y un **Reporte** tiene como máximo una asignación activa a la vez (al reasignarlo, la anterior queda inactiva en el historial).
+- Un **Usuario** Responsable puede estar vinculado opcionalmente a una **Institucion** (por ejemplo, la alcaldía de la que proviene), pero coordina todos los casos de la comunidad.
 
 ### Estados y niveles de gravedad
 
 - **Nivel de gravedad:** Bajo, Medio, Alto.
 - **Estado:** Pendiente → En proceso → Resuelto (un caso resuelto puede reabrirse a En proceso).
-- No se permite pasar de Pendiente a Resuelto directamente, y para marcar un reporte como Resuelto debe tener al menos un seguimiento registrado.
+- **Descartado:** un reporte Pendiente o En proceso puede descartarse si es falso, duplicado o está fuera de la comunidad. El motivo es obligatorio y un reporte descartado puede reabrirse a Pendiente.
+- No se permite pasar de Pendiente a Resuelto directamente, y para marcar un reporte como Resuelto debe tener al menos un seguimiento registrado por el responsable (los aportes del ciudadano no cuentan).
 
 ## Aplicación de la Programación Orientada a Objetos
 
@@ -174,14 +176,76 @@ Fase 4: Desarrollo de la aplicación
   - Meet
   - Gmail
 
-## Tipos de usuario
+## Tipos de usuario y permisos
 
-| Usuario                       | Qué puede hacer                                                                                                                           |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **Visitante** (sin cuenta)    | Ver la página de inicio, la lista de reportes con filtros y el detalle de cada reporte.                                                   |
-| **Ciudadano**                 | Registrarse con su correo, crear reportes con ubicación y fotografía, y editar o eliminar sus propios reportes mientras estén pendientes. |
-| **Responsable institucional** | Atender los casos asignados a su institución: cambiar el estado, registrar seguimientos y agregar fotografías.                            |
-| **Administrador**             | Asignar reportes a instituciones, gestionar cualquier reporte y administrar usuarios, instituciones y catálogos desde `/admin/`.          |
+El sistema funciona con un flujo de responsabilidades claro: **el ciudadano reporta, el responsable coordina y da seguimiento, la institución resuelve y el administrador mantiene el sistema funcionando**.
+
+| Usuario                                       | Función                                                                                                                                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Visitante** (sin cuenta)                    | Consulta la información pública: página de inicio, lista de reportes con filtros y detalle de cada reporte. Puede crear una cuenta de ciudadano.                                                         |
+| **Ciudadano**                                 | Reporta los problemas ambientales de su comunidad y da seguimiento a sus propios reportes.                                                                                                              |
+| **Responsable institucional** (uno o varios)  | Coordina los casos: revisa todos los reportes, los asigna a la institución que debe atenderlos (alcaldía, MARN, ONG, centro educativo), actualiza su estado y registra las acciones de seguimiento.       |
+| **Administrador** (único)                     | Mantiene el sistema: crea las cuentas de los responsables, registra instituciones, administra categorías y comunidades, y elimina reportes falsos, duplicados o inapropiados.                            |
+
+### Matriz de permisos
+
+| Acción                                                        | Visitante | Ciudadano                                       | Responsable              | Administrador            |
+| ------------------------------------------------------------- | :-------: | :---------------------------------------------: | :----------------------: | :----------------------: |
+| Ver el inicio, la lista de reportes y su detalle              | ✅        | ✅                                              | ✅                       | ✅                       |
+| Crear una cuenta desde la web                                 | ✅        | —                                               | —                        | —                        |
+| Crear reportes                                                | ❌        | ✅                                              | ❌                       | ✅                       |
+| Editar su propio reporte                                      | ❌        | ✅ solo mientras está **Pendiente**             | ❌                       | ✅ cualquier reporte     |
+| Eliminar su propio reporte                                    | ❌        | ✅ solo mientras está **Pendiente**             | ❌                       | ✅ cualquier reporte     |
+| Editar o eliminar reportes de otras personas                  | ❌        | ❌                                              | ❌                       | ✅                       |
+| Agregar fotografías                                           | ❌        | ✅ a sus reportes, si están Pendiente o En proceso | ✅ a cualquier reporte | ✅ a cualquier reporte   |
+| Agregar información adicional (aporte del ciudadano)          | ❌        | ✅ a sus reportes, si están Pendiente o En proceso | ❌                     | ✅ a sus propios reportes |
+| Asignar o reasignar un reporte a una institución              | ❌        | ❌                                              | ✅ casos abiertos        | ✅ casos abiertos        |
+| Cambiar el estado (incluido Descartado, con motivo)           | ❌        | ❌                                              | ✅                       | ✅                       |
+| Registrar acciones de seguimiento                             | ❌        | ❌                                              | ✅                       | ✅                       |
+| Gestionar usuarios, instituciones y catálogos en `/admin/`    | ❌        | ❌                                              | ❌                       | ✅                       |
+
+En **"Mi panel"**, cada rol ve los reportes que le corresponden: el ciudadano ve **"Mis reportes"**, el responsable ve **"Casos de la comunidad"** y el administrador ve **"Todos los reportes"**.
+
+Los permisos se validan en el servidor, no solo ocultando botones: si un usuario intenta una acción no autorizada (por ejemplo, escribiendo la dirección a mano), el sistema responde con una página de acceso denegado (403).
+
+### Qué puede hacer el ciudadano con su propio reporte según su estado
+
+| Estado del reporte          | Editar | Eliminar | Agregar fotografías | Agregar información adicional |
+| --------------------------- | :----: | :------: | :-----------------: | :---------------------------: |
+| **Pendiente**               | ✅     | ✅       | ✅                  | ✅                            |
+| **En proceso**              | ❌     | ❌       | ✅                  | ✅                            |
+| **Resuelto / Descartado**   | ❌     | ❌       | ❌                  | ❌                            |
+
+Una vez que el caso está **En proceso**, el ciudadano ya no puede modificar los datos originales para evitar inconsistencias con lo que la institución está atendiendo (por ejemplo, un cambio de ubicación). En su lugar, puede **agregar** fotografías e información adicional, que quedan registradas con su fecha como **"Aporte del ciudadano"** sin alterar lo reportado originalmente.
+
+### Estados del reporte
+
+- **Pendiente → En proceso → Resuelto.** Un caso resuelto puede reabrirse a En proceso.
+- **Descartado:** el responsable puede descartar un reporte Pendiente o En proceso (falso, duplicado o fuera de la comunidad). El **motivo es obligatorio** y queda visible en el detalle. Un reporte descartado puede reabrirse a Pendiente.
+- No se permite pasar de Pendiente a Resuelto directamente, y para marcar un caso como Resuelto debe existir al menos un seguimiento registrado por el responsable; los aportes del ciudadano no cuentan.
+- Cada cambio de estado queda registrado automáticamente en el **historial**.
+- **Los reportes resueltos no se eliminan:** se conservan como evidencia de la atención brindada, para consultar el historial, reabrir el caso si el problema vuelve y obtener estadísticas. Solo el administrador elimina reportes, y únicamente en casos excepcionales (falsos, duplicados o inapropiados).
+
+### Administrador único
+
+- El sistema permite **un solo administrador**. Si ya existe uno, no se puede crear ni asignar otro, ni desde `/admin/` ni con `createsuperuser`.
+- Solo el administrador puede tener acceso al panel de administración (`/admin/`).
+- En el panel, los registros se eliminan desde la ficha de cada uno (botón **"Eliminar"**); el borrado de varios registros a la vez está desactivado.
+
+### Creación de cuentas y contraseñas
+
+| Usuario           | Cómo se crea la cuenta                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Administrador** | Desde la terminal, una sola vez: `python manage.py createsuperuser`. Puede iniciar sesión con su nombre de usuario o con su correo.                                            |
+| **Responsable**   | Lo crea el administrador en `/admin/` → Usuarios → **Añadir usuario**, con el rol **Responsable institucional** y una contraseña temporal que el responsable cambia en "Mi perfil". |
+| **Ciudadano**     | Se registra por su cuenta en la página con la opción **"Registrarse"**. El formulario de registro siempre crea cuentas de ciudadano; nadie puede elegir otro rol desde ahí.      |
+
+**Requisitos al crear la cuenta de ciudadano:**
+
+- **Teléfono obligatorio:** exactamente 8 números, solo dígitos y, si se desea, un único guion medio entre ellos (ejemplo: `7000-0000` o `70000000`).
+- **Contraseña:** al menos 8 caracteres, **al menos un número** y **al menos un símbolo** (por ejemplo `- _ . @ # $ % & * !`); no puede ser completamente numérica, ni una contraseña común, ni parecerse a los datos personales del usuario.
+
+Las contraseñas se guardan **cifradas** en SQL Server: ni siquiera el administrador puede verlas, solo restablecerlas.
 
 En las páginas públicas no se muestran el nombre, el correo ni el teléfono de quien reporta (RNF05).
 
@@ -286,10 +350,13 @@ python manage.py runserver
 ## Flujo de atención de un caso
 
 1. El **ciudadano** se registra y reporta un problema con su fotografía. El reporte queda **Pendiente**.
-2. El **administrador** revisa el reporte y lo asigna a la institución correspondiente.
-3. El **responsable** de esa institución lo pasa a **En proceso** y registra las acciones de seguimiento.
-4. Cuando el problema se soluciona, el responsable lo marca como **Resuelto**.
-5. Cualquier persona puede consultar el estado y el historial del caso.
+2. El **responsable** revisa el reporte en "Mi panel" y lo asigna a la institución que debe atenderlo (alcaldía, MARN, ONG o centro educativo). Si el reporte es falso o duplicado, lo marca como **Descartado** indicando el motivo.
+3. Cuando la institución empieza a trabajar, el responsable lo pasa a **En proceso** y registra las acciones de seguimiento que la institución le informa.
+4. Mientras el caso está abierto, el ciudadano puede agregar fotografías e información adicional a su reporte.
+5. Cuando el problema se soluciona, el responsable lo marca como **Resuelto**. Si el problema vuelve, puede reabrir el caso.
+6. Cualquier persona puede consultar el estado y el historial del caso.
+
+El **administrador** no participa en la atención diaria de los casos: mantiene el sistema (cuentas de responsables, instituciones, categorías y comunidades) y elimina reportes solo en casos excepcionales.
 
 ## Documentación de datos de prueba 
 
