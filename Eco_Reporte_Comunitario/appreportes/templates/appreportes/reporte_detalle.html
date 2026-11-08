@@ -65,7 +65,7 @@
                 </div>
             </div>
 
-            <h2 class="h5">Evidencias</h2>
+            <h2 class="h5">Evidencias {% if maximo_evidencias %}<span class="small text-body-secondary fw-normal">({{ evidencias|length }} de {{ maximo_evidencias }})</span>{% endif %}</h2>
             <div class="row g-2 mb-3">
                 {% for evidencia in evidencias %}
                     <div class="col-6 col-md-4">
@@ -87,6 +87,10 @@
                         <button type="submit" class="btn btn-outline-success btn-sm">Subir fotografía</button>
                     </div>
                 </form>
+            {% elif limite_fotos_alcanzado %}
+                <p class="small text-body-secondary mb-4">
+                    <i class="bi bi-info-circle"></i> Este reporte ya tiene el máximo de {{ maximo_evidencias }} fotografías.
+                </p>
             {% endif %}
 
             <h2 class="h5">Seguimiento y aportes</h2>
@@ -123,6 +127,26 @@
         </div>
 
         <div class="col-lg-4">
+            {% if aviso_otra_institucion %}
+                <div class="alert alert-info small py-2">
+                    <i class="bi bi-building"></i> {{ aviso_otra_institucion }}
+                </div>
+            {% endif %}
+
+            {% if tomar_form %}
+                <form method="post" action="{% url 'appreportes:tomar' reporte.pk %}" class="card eco-tarjeta mb-3">
+                    <div class="card-body">
+                        <h2 class="h6">Tomar este caso</h2>
+                        <p class="small text-body-secondary">
+                            Quedará asignado a <strong>{{ user.institucion }}</strong> y solo tú podrás atenderlo.
+                        </p>
+                        {% csrf_token %}
+                        {% include "includes/formulario.html" with form=tomar_form %}
+                        <button type="submit" class="btn btn-success btn-sm">Tomar caso</button>
+                    </div>
+                </form>
+            {% endif %}
+
             {% if estado_form %}
                 <form method="post" action="{% url 'appreportes:cambiar_estado' reporte.pk %}" class="card eco-tarjeta mb-3">
                     <div class="card-body">

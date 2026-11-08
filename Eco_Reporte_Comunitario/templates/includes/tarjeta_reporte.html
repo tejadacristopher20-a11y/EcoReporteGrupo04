@@ -1,9 +1,9 @@
 {% with foto=reporte.evidencias.all.0 %}
-<a href="{{ reporte.get_absolute_url }}" class="card eco-tarjeta eco-tarjeta-enlace mb-2 text-decoration-none text-body">
+<a href="{{ reporte.get_absolute_url }}" class="card eco-tarjeta eco-tarjeta-enlace eco-aparecer mb-2 text-decoration-none text-body">
     <div class="row g-0">
         {% if foto %}
             <div class="col-3 col-md-2">
-                <img src="{{ foto.imagen.url }}" class="eco-miniatura rounded-start" alt="Fotografía del reporte">
+                <img src="{{ foto.imagen.url }}" class="eco-miniatura rounded-start" alt="Fotografía del reporte" loading="lazy">
             </div>
         {% endif %}
         <div class="{% if foto %}col-9 col-md-10{% else %}col-12{% endif %}">

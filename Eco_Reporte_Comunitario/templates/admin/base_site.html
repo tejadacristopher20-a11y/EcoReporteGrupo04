@@ -1,0 +1,7 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Extiende la plantilla original del panel de Django (mismo nombre) y solo agrega el script que evita
+el aviso «Confirmar reenvío del formulario» al volver «Atrás» (por ejemplo, después de un ingreso fallido).
+{% endcomment %}
+
+{% block extrahead %}{{ block.super }}{% include "includes/sin_reenvio.html" %}{% endblock %}

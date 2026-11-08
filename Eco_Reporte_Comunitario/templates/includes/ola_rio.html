@@ -1,0 +1,19 @@
+{# Borde inferior «Río en movimiento» de la franja del inicio: tres capas de ondas que se desplazan a distinta #}
+{# velocidad y con distinto tamaño de onda, así se cruzan como el agua de una quebrada. Cada capa se mueve la #}
+{# mitad de su ancho (1440 unidades), un múltiplo exacto de su onda, por eso el movimiento se repite sin saltos. #}
+{# La capa de adelante es del color del fondo de la página, por eso la franja termina con forma de ola. #}
+<div class="eco-ola" aria-hidden="true">
+    {# Atrás: agua turquesa con olitas cortas. #}
+    <svg class="eco-ola-capa eco-ola-1" viewBox="0 0 2880 120" preserveAspectRatio="none" focusable="false">
+        <path d="M0 60 C80 20 160 20 240 60 C320 100 400 100 480 60 C560 20 640 20 720 60 C800 100 880 100 960 60 C1040 20 1120 20 1200 60 C1280 100 1360 100 1440 60 C1520 20 1600 20 1680 60 C1760 100 1840 100 1920 60 C2000 20 2080 20 2160 60 C2240 100 2320 100 2400 60 C2480 20 2560 20 2640 60 C2720 100 2800 100 2880 60 L2880 120 L0 120 Z"/>
+    </svg>
+    {# En medio: agua verde con una línea clara de espuma sobre la cresta. #}
+    <svg class="eco-ola-capa eco-ola-2" viewBox="0 0 2880 120" preserveAspectRatio="none" focusable="false">
+        <path d="M0 60 C120 20 240 20 360 60 C480 100 600 100 720 60 C840 20 960 20 1080 60 C1200 100 1320 100 1440 60 C1560 20 1680 20 1800 60 C1920 100 2040 100 2160 60 C2280 20 2400 20 2520 60 C2640 100 2760 100 2880 60 L2880 120 L0 120 Z"/>
+        <path class="eco-ola-espuma" d="M0 60 C120 20 240 20 360 60 C480 100 600 100 720 60 C840 20 960 20 1080 60 C1200 100 1320 100 1440 60 C1560 20 1680 20 1800 60 C1920 100 2040 100 2160 60 C2280 20 2400 20 2520 60 C2640 100 2760 100 2880 60"/>
+    </svg>
+    {# Adelante: del color de la página, con una curva amplia que corta la franja. #}
+    <svg class="eco-ola-capa eco-ola-3" viewBox="0 0 2880 120" preserveAspectRatio="none" focusable="false">
+        <path d="M0 60 C240 20 480 20 720 60 C960 100 1200 100 1440 60 C1680 20 1920 20 2160 60 C2400 100 2640 100 2880 60 L2880 120 L0 120 Z"/>
+    </svg>
+</div>

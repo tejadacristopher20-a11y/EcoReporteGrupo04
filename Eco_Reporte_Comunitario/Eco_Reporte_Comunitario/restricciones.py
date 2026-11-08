@@ -6,11 +6,12 @@ Cada regla existe en dos niveles que comparten la misma definición:
   directamente con SQL, sin pasar por la aplicación.
 """
 import re
+from decimal import Decimal
 
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from django.db.models import CharField, F, Lookup, Q, Value
+from django.db.models import CharField, DateField, F, Func, Lookup, Q, Value
 from django.db.models.functions import Length, Replace
 from django.db.models.lookups import GreaterThanOrEqual, LessThanOrEqual
 from django.utils.deconstruct import deconstructible
@@ -26,6 +27,25 @@ class Like(Lookup):
         lhs, lhs_params = self.process_lhs(compiler, connection)
         rhs, rhs_params = self.process_rhs(compiler, connection)
         return f"{lhs} LIKE {rhs}", (*lhs_params, *rhs_params)
+
+
+class RestarAnios(Func):
+    """RestarAnios(fecha, 1) genera «DATEADD(year, -1, fecha)» de SQL Server."""
+
+    function = "DATEADD"
+    template = "%(function)s(year, -%(anios)d, %(expressions)s)"
+    output_field = DateField()
+
+    def __init__(self, expresion, anios=1, **extra):
+        super().__init__(expresion, anios=anios, **extra)
+
+
+def restar_anios(fecha, anios=1):
+    """Lo mismo que RestarAnios, en Python. El 29 de febrero pasa al 28, igual que DATEADD."""
+    try:
+        return fecha.replace(year=fecha.year - anios)
+    except ValueError:
+        return fecha.replace(year=fecha.year - anios, day=28)
 
 
 LETRAS = "A-Za-zÁÉÍÓÚÜÑáéíóúüñ"
@@ -59,6 +79,21 @@ MINIMO_ACCION_SEGUIMIENTO = (3, 1)
 MINIMO_DESCRIPCION_SEGUIMIENTO = (10, 2)
 MINIMO_OBSERVACION = (5, 1)
 MINIMO_DESCRIPCION_FOTO = (3, 1)
+MINIMO_DESCRIPCION_CATEGORIA = (10, 2)
+
+# --- Coordenadas: el territorio de El Salvador (aproximado, incluye las islas del golfo de Fonseca) ---
+LATITUD_MINIMA = Decimal("13.1")
+LATITUD_MAXIMA = Decimal("14.5")
+LONGITUD_MINIMA = Decimal("-90.2")
+LONGITUD_MAXIMA = Decimal("-87.6")
+
+# --- Reportes ---
+ANIOS_MAXIMOS_INCIDENTE = 5  # La fecha del incidente puede ser de hasta 5 años antes del reporte.
+MAXIMO_EVIDENCIAS_POR_REPORTE = 5  # Ciudadano y administrador.
+MAXIMO_EVIDENCIAS_RESPONSABLE = 10  # El responsable documenta el avance del caso con más fotos.
+# Un reporte con los mismos datos, del mismo usuario y dentro de estos minutos se toma como el mismo
+# reporte enviado otra vez (por ejemplo, al volver «Atrás» y guardar de nuevo).
+MINUTOS_REPORTE_DUPLICADO = 10
 
 
 # --- Validadores para los formularios ---

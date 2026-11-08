@@ -1,6 +1,8 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError, transaction
+from django.db.models import ProtectedError
 from django.test import SimpleTestCase, TestCase
 
 from Eco_Reporte_Comunitario.restricciones import (
@@ -29,19 +31,25 @@ class ReporteAmbientalTests(TestCase):
 
         cls.ciudadano = Ciudadano.objects.create_user("ciudadano", "c@eco.sv", "clave-segura-1")
         cls.otro_ciudadano = Ciudadano.objects.create_user("otro", "o@eco.sv", "clave-segura-1")
-        cls.responsable = Responsable.objects.create_user("responsable", "r@eco.sv", "clave-segura-1")
+        cls.responsable = Responsable.objects.create_user(
+            "responsable", "r@eco.sv", "clave-segura-1", institucion=cls.institucion
+        )
         cls.admin = Administrador.objects.create_user("admin", "a@eco.sv", "clave-segura-1")
 
-    def crear_reporte(self, **datos):
-        return ReporteAmbiental.objects.create(
+    def crear_reporte(self, asignado=True, **datos):
+        """Reporte de prueba. Por defecto, asignado a la institución del responsable (lo atiende él)."""
+        reporte = ReporteAmbiental.objects.create(
             usuario=self.ciudadano,
             categoria=self.categoria,
             ubicacion=self.ubicacion,
             titulo="Basura en la quebrada",
             descripcion="Acumulación de basura",
-            fecha_incidente=date(2026, 10, 1),
+            fecha_incidente=date.today() - timedelta(days=30),
             nivel_gravedad=datos.get("nivel_gravedad", ReporteAmbiental.NivelGravedad.ALTO),
         )
+        if asignado:
+            reporte.asignar_a(self.institucion, self.admin)
+        return reporte
 
     def crear_reporte_en_proceso(self):
         reporte = self.crear_reporte()
@@ -71,13 +79,16 @@ class ReporteAmbientalTests(TestCase):
         self.assertFalse(ciudadano.puede("cambiar_estado"))
         self.assertFalse(ciudadano.puede("asignar_reporte"))
 
-        self.assertTrue(responsable.puede("asignar_reporte"))
+        self.assertFalse(responsable.puede("asignar_reporte"))
+        self.assertTrue(responsable.puede("tomar_reporte"))
         self.assertTrue(responsable.puede("cambiar_estado"))
         self.assertFalse(responsable.puede("crear_reporte"))
         self.assertFalse(responsable.puede("eliminar_cualquier_reporte"))
 
         self.assertTrue(admin.puede("eliminar_cualquier_reporte"))
         self.assertTrue(admin.puede("asignar_reporte"))
+        self.assertTrue(admin.puede("gestionar_cualquier_reporte"))
+        self.assertFalse(admin.puede("tomar_reporte"))
 
     def test_solo_puede_existir_un_administrador(self):
         with self.assertRaises(ValidationError):
@@ -96,9 +107,34 @@ class ReporteAmbientalTests(TestCase):
         with self.assertRaises(ValidationError):
             Ciudadano.objects.create_user("staff", "s@eco.sv", "clave-segura-1", is_staff=True)
 
-    def test_responsable_no_necesita_institucion(self):
-        self.assertIsNone(self.responsable.institucion)
-        self.assertEqual(self.responsable.titulo_panel(), "Casos de la comunidad")
+    # --- Un responsable por institución ---
+
+    def test_responsable_debe_tener_institucion(self):
+        self.assertEqual(self.responsable.titulo_panel(), "Casos de mi institución")
+        with self.assertRaisesMessage(ValidationError, "El responsable debe pertenecer a una institución."):
+            Responsable.objects.create_user("sin_institucion", "s@eco.sv", "clave-segura-1")
+
+    def test_un_solo_responsable_por_institucion(self):
+        with self.assertRaisesMessage(ValidationError, "Esta institución ya tiene un responsable."):
+            Responsable.objects.create_user("otro_r", "or@eco.sv", "clave-segura-1", institucion=self.institucion)
+        marn = Institucion.objects.create(nombre="MARN", tipo=Institucion.Tipo.GOBIERNO)
+        responsable_marn = Responsable.objects.create_user("marn", "m@eco.sv", "clave-segura-1", institucion=marn)
+        self.assertEqual(responsable_marn.institucion, marn)
+
+    def test_sql_server_aplica_las_reglas_del_responsable(self):
+        # Aunque se salte la aplicación (UPDATE directo), SQL Server rechaza los datos.
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Usuario.objects.filter(pk=self.responsable.pk).update(institucion=None)
+        marn = Institucion.objects.create(nombre="MARN", tipo=Institucion.Tipo.GOBIERNO)
+        responsable_marn = Responsable.objects.create_user("marn", "m@eco.sv", "clave-segura-1", institucion=marn)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Usuario.objects.filter(pk=responsable_marn.pk).update(institucion=self.institucion)
+
+    def test_no_se_borra_una_institucion_que_tiene_responsable(self):
+        marn = Institucion.objects.create(nombre="MARN", tipo=Institucion.Tipo.GOBIERNO)
+        Responsable.objects.create_user("marn", "m@eco.sv", "clave-segura-1", institucion=marn)
+        with self.assertRaises(ProtectedError):
+            marn.delete()
 
     # --- Ciudadano: su propio reporte ---
 
@@ -141,17 +177,50 @@ class ReporteAmbientalTests(TestCase):
 
     # --- Responsable: coordina y da seguimiento ---
 
-    def test_responsable_gestiona_cualquier_reporte_sin_asignacion(self):
-        reporte = self.crear_reporte()
-        self.assertTrue(reporte.puede_gestionar(self.responsable))
-        self.assertFalse(reporte.puede_modificar(self.responsable))
-        self.assertFalse(reporte.puede_eliminar(self.responsable))
+    def test_responsable_gestiona_solo_los_casos_de_su_institucion(self):
+        propio = self.crear_reporte()
+        self.assertTrue(propio.puede_gestionar(self.responsable))
+        self.assertFalse(propio.puede_modificar(self.responsable))
+        self.assertFalse(propio.puede_eliminar(self.responsable))
 
-    def test_responsable_asigna_y_reasigna(self):
-        reporte = self.crear_reporte()
+        sin_asignar = self.crear_reporte(asignado=False)
+        self.assertFalse(sin_asignar.puede_gestionar(self.responsable))
+        self.assertTrue(sin_asignar.puede_tomar(self.responsable))
+        with self.assertRaises(PermissionDenied):
+            sin_asignar.cambiar_estado(Estado.EN_PROCESO, self.responsable)
+
+        marn = Institucion.objects.create(nombre="MARN", tipo=Institucion.Tipo.GOBIERNO)
+        de_otra = self.crear_reporte(asignado=False)
+        de_otra.asignar_a(marn, self.admin)
+        self.assertFalse(de_otra.puede_gestionar(self.responsable))
+        self.assertFalse(de_otra.puede_agregar_evidencia(self.responsable))
+        self.assertFalse(de_otra.puede_tomar(self.responsable))
+        with self.assertRaises(PermissionDenied):
+            de_otra.registrar_seguimiento(self.responsable, "Inspección", "Se visitó el lugar")
+
+    def test_responsable_toma_un_caso_y_luego_lo_atiende(self):
+        reporte = self.crear_reporte(asignado=False)
+        reporte.tomar(self.responsable, "Se visitará el lugar")
+        self.assertEqual(reporte.asignacion_activa().institucion, self.institucion)
+        self.assertEqual(reporte.asignacion_activa().asignado_por, self.responsable)
+        self.assertTrue(reporte.puede_gestionar(self.responsable))
+        reporte.cambiar_estado(Estado.EN_PROCESO, self.responsable)
+        with self.assertRaisesMessage(ValidationError, "ya está asignado a tu institución"):
+            reporte.tomar(self.responsable)
+
+    def test_el_administrador_gestiona_cualquier_caso(self):
+        reporte = self.crear_reporte(asignado=False)
+        self.assertTrue(reporte.puede_gestionar(self.admin))
+        self.assertFalse(reporte.puede_tomar(self.admin))
+
+    def test_solo_el_administrador_asigna_y_reasigna(self):
+        reporte = self.crear_reporte(asignado=False)
         otra = Institucion.objects.create(nombre="MARN", tipo=Institucion.Tipo.GOBIERNO)
-        reporte.asignar_a(self.institucion, self.responsable)
-        reporte.asignar_a(otra, self.responsable)
+        self.assertFalse(reporte.puede_asignar(self.responsable))
+        with self.assertRaises(PermissionDenied):
+            reporte.asignar_a(otra, self.responsable)
+        reporte.asignar_a(self.institucion, self.admin)
+        reporte.asignar_a(otra, self.admin)
         self.assertEqual(reporte.asignaciones.filter(activa=True).count(), 1)
         self.assertEqual(reporte.asignacion_activa().institucion, otra)
         self.assertEqual(list(otra.reportes_asignados()), [reporte])
@@ -164,9 +233,9 @@ class ReporteAmbientalTests(TestCase):
 
     def test_no_se_asigna_un_caso_cerrado(self):
         reporte = self.crear_reporte_resuelto()
-        self.assertFalse(reporte.puede_asignar(self.responsable))
+        self.assertFalse(reporte.puede_asignar(self.admin))
         with self.assertRaises(ValidationError):
-            reporte.asignar_a(self.institucion, self.responsable)
+            reporte.asignar_a(self.institucion, self.admin)
 
     # --- Estados ---
 

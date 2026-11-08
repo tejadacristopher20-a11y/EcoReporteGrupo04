@@ -19,7 +19,11 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from appusuarios.views import SalidaAdminView
+
 urlpatterns = [
+    # Va antes de admin.site.urls para atender /admin/logout/ también cuando se abre como página.
+    path('admin/logout/', SalidaAdminView.as_view()),
     path('admin/', admin.site.urls),
     path('cuenta/', include('appusuarios.urls')),
     path('', include('appreportes.urls')),

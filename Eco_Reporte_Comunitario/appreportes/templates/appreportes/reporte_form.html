@@ -9,6 +9,7 @@
             <h1 class="h3 mb-3">{{ titulo_pagina }}</h1>
             <form method="post" enctype="multipart/form-data" novalidate>
                 {% csrf_token %}
+                {% if form.token_envio %}{{ form.token_envio }}{% endif %}
                 {% for error in form.non_field_errors %}
                     <div class="alert alert-danger py-2">{{ error }}</div>
                 {% endfor %}
@@ -37,8 +38,8 @@
                         </div>
                         {% include "includes/campo.html" with campo=form.direccion %}
                         <div class="row">
-                            <div class="col-6">{% include "includes/campo.html" with campo=form.latitud %}</div>
-                            <div class="col-6">{% include "includes/campo.html" with campo=form.longitud %}</div>
+                            <div class="col-12 col-sm-6">{% include "includes/campo.html" with campo=form.latitud %}</div>
+                            <div class="col-12 col-sm-6">{% include "includes/campo.html" with campo=form.longitud %}</div>
                         </div>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="usar-mi-ubicacion">
                             <i class="bi bi-crosshair"></i> Usar mi ubicación actual
@@ -52,7 +53,7 @@
                         <div class="card-header fw-semibold"><i class="bi bi-camera"></i> Evidencia</div>
                         <div class="card-body">
                             {% include "includes/campo.html" with campo=form.foto %}
-                            <p class="small text-body-secondary mb-0">Podrás agregar más fotografías desde el detalle del reporte.</p>
+                            <p class="small text-body-secondary mb-0">Podrás agregar más fotografías del progreso desde el detalle del reporte (hasta 5 en total).</p>
                         </div>
                     </div>
                 {% endif %}

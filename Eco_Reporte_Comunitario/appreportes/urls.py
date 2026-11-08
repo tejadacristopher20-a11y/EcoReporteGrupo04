@@ -16,5 +16,6 @@ urlpatterns = [
     path("reportes/<int:pk>/seguimiento/", views.RegistrarSeguimientoView.as_view(), name="registrar_seguimiento"),
     path("reportes/<int:pk>/aporte/", views.AportarInformacionView.as_view(), name="aportar_informacion"),
     path("reportes/<int:pk>/asignar/", views.AsignarReporteView.as_view(), name="asignar"),
+    path("reportes/<int:pk>/tomar/", views.TomarCasoView.as_view(), name="tomar"),
     path("mi-panel/", views.PanelView.as_view(), name="panel"),
 ]

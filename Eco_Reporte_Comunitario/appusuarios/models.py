@@ -4,19 +4,28 @@ from django.apps import apps
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.db.models.functions import Now
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from Eco_Reporte_Comunitario.modelos_base import ModeloBase
 from Eco_Reporte_Comunitario.restricciones import (
+    MAXIMO_EVIDENCIAS_POR_REPORTE,
+    MAXIMO_EVIDENCIAS_RESPONSABLE,
     q_correo,
     q_nombre_persona,
     q_telefono_opcional,
     q_valor_en,
     validar_nombre_persona,
     validar_telefono,
+)
+
+
+MENSAJE_RESPONSABLE_SIN_INSTITUCION = "El responsable debe pertenecer a una institución."
+MENSAJE_INSTITUCION_CON_RESPONSABLE = (
+    "Esta institución ya tiene un responsable. Cada institución tiene un único responsable: "
+    "cambie primero la institución del responsable actual."
 )
 
 
@@ -91,9 +100,11 @@ class Usuario(AbstractUser, ModeloBase):
     telefono = models.CharField(
         "teléfono", max_length=15, blank=True, db_default="", validators=[validar_telefono]
     )
+    # Solo para los responsables: cada institución tiene un único responsable, que atiende sus casos.
+    # PROTECT: no se puede borrar una institución que todavía tiene responsable (primero se le cambia).
     institucion = models.ForeignKey(
         "appinstituciones.Institucion",
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="responsables",
@@ -131,6 +142,17 @@ class Usuario(AbstractUser, ModeloBase):
                 condition=Q(rol=Rol.RESPONSABLE) | Q(institucion__isnull=True),
                 name="ck_usuario_institucion_solo_responsable",
                 violation_error_message="Solo los responsables pueden pertenecer a una institución.",
+            ),
+            models.CheckConstraint(
+                condition=~Q(rol=Rol.RESPONSABLE) | Q(institucion__isnull=False),
+                name="ck_usuario_responsable_con_institucion",
+                violation_error_message=MENSAJE_RESPONSABLE_SIN_INSTITUCION,
+            ),
+            models.UniqueConstraint(
+                fields=["institucion"],
+                condition=Q(rol=Rol.RESPONSABLE, institucion__isnull=False),
+                name="uq_usuario_un_responsable_por_institucion",
+                violation_error_message=MENSAJE_INSTITUCION_CON_RESPONSABLE,
             ),
             models.CheckConstraint(
                 condition=~Q(username=""),
@@ -173,6 +195,12 @@ class Usuario(AbstractUser, ModeloBase):
             raise ValidationError("Solo el administrador puede tener acceso al panel de administración.")
         if self.rol != self.Rol.RESPONSABLE and self.institucion_id:
             raise ValidationError("Solo los responsables pueden pertenecer a una institución.")
+        if self.rol == self.Rol.RESPONSABLE:
+            if not self.institucion_id:
+                raise ValidationError(MENSAJE_RESPONSABLE_SIN_INSTITUCION)
+            otro = Usuario.objects.filter(rol=self.Rol.RESPONSABLE, institucion_id=self.institucion_id)
+            if otro.exclude(pk=self.pk).exists():
+                raise ValidationError(MENSAJE_INSTITUCION_CON_RESPONSABLE)
 
     def clean(self):
         # Las reglas de rol se validan con las restricciones de Meta (validate_constraints).
@@ -213,6 +241,10 @@ class Usuario(AbstractUser, ModeloBase):
     def titulo_panel(self):
         return self.como_rol().titulo_panel()
 
+    def maximo_evidencias(self):
+        """Método polimórfico: hasta cuántas fotografías puede tener un reporte cuando sube este rol."""
+        return self.como_rol().maximo_evidencias()
+
 
 def _reportes():
     # Import diferido para evitar la importación circular entre apps.
@@ -245,6 +277,9 @@ class Ciudadano(Usuario):
     def titulo_panel(self):
         return "Mis reportes"
 
+    def maximo_evidencias(self):
+        return MAXIMO_EVIDENCIAS_POR_REPORTE
+
 
 class Responsable(Usuario):
     rol_fijo = Usuario.Rol.RESPONSABLE
@@ -256,20 +291,32 @@ class Responsable(Usuario):
         verbose_name_plural = "responsables institucionales"
 
     def obtener_permisos(self):
-        # Coordinador: asigna los casos a las instituciones y les da seguimiento.
+        # Atiende los casos de su institución: los toma, cambia su estado y les da seguimiento.
+        # ReporteAmbiental revisa, además, que el caso esté asignado a su institución.
         return frozenset({
             "consultar_reportes",
-            "asignar_reporte",
+            "tomar_reporte",
             "cambiar_estado",
             "registrar_seguimiento",
             "agregar_evidencia",
         })
 
     def reportes_de_panel(self):
-        return _reportes().all()
+        """Los casos asignados a su institución y los casos abiertos que nadie ha tomado todavía."""
+        reportes = _reportes()
+        asignaciones_activas = apps.get_model("appinstituciones", "AsignacionReporte").objects.filter(
+            reporte=OuterRef("pk"), activa=True
+        )
+        return reportes.filter(
+            Exists(asignaciones_activas.filter(institucion_id=self.institucion_id))
+            | (Q(estado__in=reportes.model.ESTADOS_ACTIVOS) & ~Exists(asignaciones_activas))
+        )
 
     def titulo_panel(self):
-        return "Casos de la comunidad"
+        return "Casos de mi institución"
+
+    def maximo_evidencias(self):
+        return MAXIMO_EVIDENCIAS_RESPONSABLE
 
 
 class Administrador(Usuario):
@@ -282,7 +329,10 @@ class Administrador(Usuario):
         verbose_name_plural = "administradores"
 
     def obtener_permisos(self):
-        return Ciudadano.obtener_permisos(self) | Responsable.obtener_permisos(self) | {
+        # No «toma» casos (no pertenece a una institución): los asigna y puede gestionar cualquiera.
+        return (Ciudadano.obtener_permisos(self) | Responsable.obtener_permisos(self)) - {"tomar_reporte"} | {
+            "asignar_reporte",
+            "gestionar_cualquier_reporte",
             "modificar_cualquier_reporte",
             "eliminar_cualquier_reporte",
             "gestionar_usuarios",
@@ -294,3 +344,6 @@ class Administrador(Usuario):
 
     def titulo_panel(self):
         return "Todos los reportes"
+
+    def maximo_evidencias(self):
+        return MAXIMO_EVIDENCIAS_POR_REPORTE

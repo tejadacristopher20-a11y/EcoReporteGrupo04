@@ -1,31 +1,43 @@
 import os
 
+from datetime import datetime, timedelta
 from functools import reduce
 from operator import or_
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models, transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.db.models.functions import Cast, Now
 from django.urls import reverse
+from django.utils import timezone
 
 from Eco_Reporte_Comunitario.modelos_base import ModeloBase
 from Eco_Reporte_Comunitario.restricciones import (
+    ANIOS_MAXIMOS_INCIDENTE,
+    MAXIMO_EVIDENCIAS_POR_REPORTE,
     MINIMO_ACCION_SEGUIMIENTO,
+    MINIMO_DESCRIPCION_CATEGORIA,
     MINIMO_DESCRIPCION_FOTO,
     MINIMO_DESCRIPCION_REPORTE,
     MINIMO_DESCRIPCION_SEGUIMIENTO,
     MINIMO_OBSERVACION,
     MINIMO_TITULO_REPORTE,
+    MINUTOS_REPORTE_DUPLICADO,
+    RestarAnios,
     q_contiene_letras,
     q_nombre_general,
     q_texto_libre,
     q_texto_libre_opcional,
     q_valor_en,
+    restar_anios,
     validador_texto,
-    validar_contiene_letras,
     validar_nombre_general,
+)
+
+
+MENSAJE_FECHA_MUY_ANTIGUA = (
+    f"La fecha del incidente no puede ser de hace más de {ANIOS_MAXIMOS_INCIDENTE} años."
 )
 
 
@@ -51,7 +63,9 @@ class CategoriaProblema(ModeloBase):
     """Entidad 6."""
 
     nombre = models.CharField(max_length=100, unique=True, validators=[validar_nombre_general])
-    descripcion = models.CharField("descripción", max_length=250, validators=[validar_contiene_letras])
+    descripcion = models.CharField(
+        "descripción", max_length=250, validators=[validador_texto(MINIMO_DESCRIPCION_CATEGORIA)]
+    )
     activa = models.BooleanField(default=True, db_default=True)
 
     class Meta:
@@ -65,9 +79,12 @@ class CategoriaProblema(ModeloBase):
                 violation_error_message="El nombre de la categoría solo admite letras, números y signos básicos.",
             ),
             models.CheckConstraint(
-                condition=q_contiene_letras("descripcion"),
+                condition=q_texto_libre("descripcion", MINIMO_DESCRIPCION_CATEGORIA),
                 name="ck_categoria_descripcion_valida",
-                violation_error_message="La descripción de la categoría debe incluir letras.",
+                violation_error_message=(
+                    f"La descripción de la categoría debe tener al menos {MINIMO_DESCRIPCION_CATEGORIA[0]} "
+                    "caracteres, incluir letras y no llevar símbolos raros."
+                ),
             ),
         ]
 
@@ -97,6 +114,22 @@ class ReporteQuerySet(models.QuerySet):
     def criticos(self):
         return self.activos().filter(nivel_gravedad=ReporteAmbiental.NivelGravedad.ALTO)
 
+    def duplicado_reciente(self, usuario, datos):
+        """El reporte que este usuario acaba de guardar con los mismos datos, si existe.
+
+        Detecta el formulario enviado otra vez al volver «Atrás»: el navegador vuelve a pedir la página,
+        trae un código de envío nuevo y rellena los campos con lo que se había escrito.
+        """
+        hace_poco = timezone.now() - timedelta(minutes=MINUTOS_REPORTE_DUPLICADO)
+        return self.filter(
+            usuario=usuario,
+            categoria=datos.get("categoria"),
+            titulo=datos.get("titulo"),
+            descripcion=datos.get("descripcion"),
+            fecha_incidente=datos.get("fecha_incidente"),
+            fecha_creacion__gte=hace_poco,
+        ).first()
+
 
 class ReporteAmbiental(ModeloBase):
     """Entidad 7. El estado solo puede cambiarse con cambiar_estado()."""
@@ -114,6 +147,8 @@ class ReporteAmbiental(ModeloBase):
 
     # Casos que siguen abiertos: el ciudadano aún puede agregar fotos e información.
     ESTADOS_ACTIVOS = (Estado.PENDIENTE, Estado.EN_PROCESO)
+
+    MAXIMO_EVIDENCIAS = MAXIMO_EVIDENCIAS_POR_REPORTE
 
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="reportes")
     categoria = models.ForeignKey(
@@ -135,6 +170,9 @@ class ReporteAmbiental(ModeloBase):
         db_default=Estado.PENDIENTE,
         editable=False,
     )
+    # Código único de cada formulario de "Nuevo reporte": si se envía dos veces (doble clic),
+    # SQL Server rechaza el segundo y no se crea un reporte duplicado.
+    token_envio = models.UUIDField("código de envío", null=True, blank=True, editable=False)
 
     objects = ReporteQuerySet.as_manager()
 
@@ -144,6 +182,11 @@ class ReporteAmbiental(ModeloBase):
         verbose_name = "reporte ambiental"
         verbose_name_plural = "reportes ambientales"
         ordering = ["-fecha_creacion"]
+        # Índices para los filtros y el orden más usados (las llaves foráneas ya tienen el suyo).
+        indexes = [
+            models.Index(fields=["estado", "-fecha_creacion"], name="ix_reporte_estado_fecha"),
+            models.Index(fields=["-fecha_creacion"], name="ix_reporte_fecha"),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=q_texto_libre("titulo", MINIMO_TITULO_REPORTE),
@@ -166,6 +209,23 @@ class ReporteAmbiental(ModeloBase):
                 name="ck_reporte_fecha_no_futura",
                 violation_error_message="La fecha del incidente no puede ser futura.",
             ),
+            # Se compara con la fecha de creación (y no con hoy) para que el reporte se pueda seguir
+            # actualizando años después sin que SQL Server lo rechace.
+            models.CheckConstraint(
+                condition=Q(
+                    fecha_incidente__gte=RestarAnios(
+                        Cast(F("fecha_creacion"), models.DateField()), ANIOS_MAXIMOS_INCIDENTE
+                    )
+                ),
+                name="ck_reporte_fecha_antiguedad_maxima",
+                violation_error_message=MENSAJE_FECHA_MUY_ANTIGUA,
+            ),
+            models.UniqueConstraint(
+                fields=["token_envio"],
+                condition=Q(token_envio__isnull=False),
+                name="uq_reporte_token_envio",
+                violation_error_message="Este reporte ya se había guardado.",
+            ),
             models.CheckConstraint(
                 condition=q_valor_en("nivel_gravedad", NivelGravedad.choices),
                 name="ck_reporte_gravedad_valida",
@@ -183,6 +243,25 @@ class ReporteAmbiental(ModeloBase):
 
     def get_absolute_url(self):
         return reverse("appreportes:detalle", args=[self.pk])
+
+    def fecha_minima_incidente(self):
+        """ANIOS_MAXIMOS_INCIDENTE (5) años antes de la fecha en que se creó el reporte (o de hoy, si aún no se guarda).
+
+        Usa la misma fecha que compara SQL Server en ck_reporte_fecha_antiguedad_maxima.
+        """
+        # En un reporte nuevo, fecha_creacion aún no es una fecha (la pondrá la base de datos).
+        creado = self.fecha_creacion if isinstance(self.fecha_creacion, datetime) else timezone.now()
+        return restar_anios(creado.date(), ANIOS_MAXIMOS_INCIDENTE)
+
+    def clean(self):
+        super().clean()
+        if self.fecha_incidente and self.fecha_incidente < self.fecha_minima_incidente():
+            raise ValidationError({
+                "fecha_incidente": (
+                    f"{MENSAJE_FECHA_MUY_ANTIGUA[:-1]} "
+                    f"(la más antigua permitida es el {self.fecha_minima_incidente():%d/%m/%Y})."
+                )
+            })
 
     def save(self, *args, **kwargs):
         if self.pk and not self._cambio_estado_autorizado:
@@ -230,16 +309,43 @@ class ReporteAmbiental(ModeloBase):
             and self.estado == self.Estado.PENDIENTE
         )
 
+    def atendido_por_institucion_de(self, usuario):
+        """El caso está asignado (asignación activa) a la institución de este usuario."""
+        institucion_id = getattr(usuario, "institucion_id", None)
+        return bool(institucion_id) and self.asignaciones.filter(activa=True, institucion_id=institucion_id).exists()
+
     def puede_gestionar(self, usuario):
-        """Cambiar estado y registrar seguimiento: cualquier responsable o el administrador."""
-        return usuario.is_authenticated and usuario.puede("cambiar_estado")
+        """Cambiar estado, registrar seguimiento y subir fotos del avance: el responsable de la institución
+        a la que está asignado el caso, o el administrador."""
+        if not (usuario.is_authenticated and usuario.puede("cambiar_estado")):
+            return False
+        return usuario.puede("gestionar_cualquier_reporte") or self.atendido_por_institucion_de(usuario)
+
+    def motivo_no_gestiona(self):
+        """Explicación para un responsable que ve un caso que no le toca atender."""
+        asignacion = self.asignacion_activa()
+        if asignacion is None:
+            return "Este caso todavía no está asignado a tu institución. Tómalo primero para poder atenderlo."
+        return f"Este caso lo atiende {asignacion.institucion}; solo su responsable puede actualizarlo."
 
     def puede_asignar(self, usuario):
-        """Asignar a una institución: responsable o administrador, solo mientras el caso está abierto."""
+        """Asignar o reasignar a una institución: solo el administrador, mientras el caso está abierto."""
         return usuario.is_authenticated and usuario.puede("asignar_reporte") and self.esta_activo()
 
+    def puede_tomar(self, usuario):
+        """Un responsable toma, para su institución, un caso abierto que nadie ha tomado todavía."""
+        return (
+            usuario.is_authenticated
+            and usuario.puede("tomar_reporte")
+            and bool(usuario.institucion_id)
+            and usuario.institucion.activa
+            and self.esta_activo()
+            and not self.asignaciones.filter(activa=True).exists()
+        )
+
     def puede_agregar_evidencia(self, usuario):
-        """El responsable y el administrador siempre; el dueño solo mientras el caso está abierto."""
+        """El responsable de la institución asignada y el administrador siempre; el dueño solo mientras
+        el caso está abierto."""
         if self.puede_gestionar(usuario):
             return True
         return self.es_propietario(usuario) and usuario.puede("agregar_evidencia") and self.esta_activo()
@@ -264,20 +370,44 @@ class ReporteAmbiental(ModeloBase):
     def estados_siguientes(self):
         return [estado for estado in self.Estado if self.puede_cambiar_a(estado)]
 
-    def cambiar_estado(self, nuevo_estado, usuario, observacion=""):
-        """RF09: valida la transición y deja constancia en HistorialEstado."""
+    def bloquear_y_leer_estado(self):
+        """Bloquea la fila del reporte hasta que termine la transacción y lee su estado real.
+
+        Cambiar el estado, tomar el caso y asignarlo pasan por aquí: si dos personas lo hacen al mismo
+        tiempo, SQL Server hace esperar a la segunda hasta que la primera termine.
+        """
+        self.estado = type(self).objects.select_for_update().values_list("estado", flat=True).get(pk=self.pk)
+
+    def cambiar_estado(self, nuevo_estado, usuario, observacion="", estado_visto=None):
+        """RF09: valida la transición y deja constancia en HistorialEstado.
+
+        estado_visto es el estado que tenía el reporte en la página de quien hace el cambio. Si otra
+        persona lo cambió mientras tanto, se rechaza: se queda el cambio que se guardó primero.
+        """
         if not self.puede_gestionar(usuario):
             raise PermissionDenied("Este usuario no puede cambiar el estado de este reporte.")
-        if not self.puede_cambiar_a(nuevo_estado):
-            raise ValidationError(
-                f"No se permite pasar de {self.get_estado_display()} a {self.Estado(nuevo_estado).label}."
-            )
-        if nuevo_estado == self.Estado.RESUELTO and not self.tiene_seguimiento_registrado():
-            raise ValidationError("Registre al menos un seguimiento antes de marcar el reporte como resuelto.")
-        if nuevo_estado == self.Estado.DESCARTADO and not observacion.strip():
-            raise ValidationError("Indique el motivo por el que se descarta el reporte.")
 
         with transaction.atomic():
+            # Si dos personas lo cambian al mismo tiempo, la segunda espera y trabaja con el estado ya actualizado.
+            self.bloquear_y_leer_estado()
+            if not self.puede_gestionar(usuario):
+                # El administrador lo reasignó a otra institución mientras esta persona lo revisaba.
+                raise ValidationError(self.motivo_no_gestiona(), code="reporte_desactualizado")
+            if estado_visto and estado_visto != self.estado:
+                raise ValidationError(
+                    "No se pudo cambiar el estado: otro usuario ya lo cambió a "
+                    f"«{self.get_estado_display()}» mientras lo revisabas. Revisa el estado actual.",
+                    code="reporte_desactualizado",
+                )
+            if not self.puede_cambiar_a(nuevo_estado):
+                raise ValidationError(
+                    f"No se permite pasar de {self.get_estado_display()} a {self.Estado(nuevo_estado).label}."
+                )
+            if nuevo_estado == self.Estado.RESUELTO and not self.tiene_seguimiento_registrado():
+                raise ValidationError("Registre al menos un seguimiento antes de marcar el reporte como resuelto.")
+            if nuevo_estado == self.Estado.DESCARTADO and not observacion.strip():
+                raise ValidationError("Indique el motivo por el que se descarta el reporte.")
+
             anterior = self.estado
             self.estado = nuevo_estado
             self._cambio_estado_autorizado = True
@@ -311,21 +441,60 @@ class ReporteAmbiental(ModeloBase):
             descripcion=descripcion,
         )
 
+    def evidencias_restantes(self, usuario):
+        """Cuántas fotografías más puede subir este usuario (contando la inicial).
+
+        El límite depende del rol: 5 para el ciudadano y el administrador, 10 para el responsable.
+        """
+        return max(usuario.maximo_evidencias() - self.evidencias.count(), 0)
+
     def agregar_evidencia(self, usuario, imagen, descripcion=""):
-        """RF05."""
+        """RF05. Se pueden seguir subiendo fotos del progreso hasta llegar al máximo del rol."""
         if not self.puede_agregar_evidencia(usuario):
             raise PermissionDenied("Este usuario no puede agregar evidencias a este reporte.")
-        return self.evidencias.create(imagen=imagen, descripcion=descripcion)
+        with transaction.atomic():
+            # Bloquea el reporte hasta terminar: si dos personas suben fotos al mismo tiempo,
+            # la segunda espera y cuenta ya con la foto de la primera, así nunca se pasa del límite.
+            type(self).objects.select_for_update().filter(pk=self.pk).exists()
+            if not self.evidencias_restantes(usuario):
+                raise ValidationError(
+                    f"El reporte ya tiene el máximo de {usuario.maximo_evidencias()} fotografías permitidas."
+                )
+            return self.evidencias.create(imagen=imagen, descripcion=descripcion)
 
     def asignar_a(self, institucion, usuario, observacion=""):
-        """Asigna el reporte a una institución; desactiva la asignación anterior."""
+        """El administrador asigna (o reasigna) el reporte a una institución; desactiva la asignación anterior."""
         if not usuario.puede("asignar_reporte"):
-            raise PermissionDenied("Solo el responsable o el administrador pueden asignar reportes.")
-        if not self.esta_activo():
-            raise ValidationError("Solo se pueden asignar reportes pendientes o en proceso.")
+            raise PermissionDenied("Solo el administrador puede asignar o reasignar reportes.")
         with transaction.atomic():
+            self.bloquear_y_leer_estado()
+            if not self.esta_activo():
+                raise ValidationError("Solo se pueden asignar reportes pendientes o en proceso.")
             self.asignaciones.filter(activa=True).update(activa=False)
             return self.asignaciones.create(institucion=institucion, asignado_por=usuario, observacion=observacion)
+
+    def tomar(self, usuario, observacion=""):
+        """El responsable toma el caso para su institución. Si dos lo intentan a la vez, se queda el primero."""
+        if not (usuario.is_authenticated and usuario.puede("tomar_reporte") and usuario.institucion_id):
+            raise PermissionDenied("Solo un responsable con institución puede tomar casos.")
+        with transaction.atomic():
+            self.bloquear_y_leer_estado()
+            actual = self.asignacion_activa()
+            if actual and actual.institucion_id == usuario.institucion_id:
+                raise ValidationError("Este caso ya está asignado a tu institución.", code="reporte_desactualizado")
+            if actual:
+                raise ValidationError(
+                    f"No se pudo tomar el caso: ya lo atiende {actual.institucion}.", code="reporte_desactualizado"
+                )
+            if not self.esta_activo():
+                raise ValidationError(
+                    "No se pudo tomar el caso: ya está cerrado (resuelto o descartado).", code="reporte_desactualizado"
+                )
+            if not usuario.institucion.activa:
+                raise ValidationError("Tu institución está inactiva; no puede tomar casos nuevos.")
+            return self.asignaciones.create(
+                institucion_id=usuario.institucion_id, asignado_por=usuario, observacion=observacion
+            )
 
     def es_critico(self):
         return self.nivel_gravedad == self.NivelGravedad.ALTO and self.esta_activo()

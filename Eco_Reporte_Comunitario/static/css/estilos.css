@@ -131,3 +131,180 @@
     background-color: var(--eco-verde-claro);
     color: var(--eco-verde-oscuro);
 }
+
+/* Celulares muy angostos (iPhone SE, Galaxy pequeños): textos grandes un poco más compactos. */
+@media (max-width: 400px) {
+    .eco-navbar .navbar-brand {
+        font-size: 1.05rem;
+        margin-right: 0.5rem;
+    }
+
+    .eco-hero h1 {
+        font-size: 1.6rem;
+    }
+
+    .eco-numero {
+        font-size: 1.6rem;
+    }
+}
+
+/* --- Información sobre el ambiente (pantalla de inicio) --- */
+.eco-icono-ambiente {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background-color: var(--eco-verde-claro);
+    color: var(--eco-verde);
+    font-size: 1.35rem;
+}
+
+/* --- Aparecer al hacer scroll ---
+   Solo se activa si static/js/aparecer.js puso la clase «eco-animado» en <html>: sin JavaScript,
+   o si la persona pidió menos movimiento en su sistema, todo se ve normal y sin animación.
+   El bloque oculto se corre hacia el lado por donde salió (abajo o arriba), así al volver
+   entra desde ese mismo lado. */
+.eco-animado .eco-aparecer {
+    opacity: 0;
+    transform: translateY(1.5rem);
+    transition: opacity 0.6s ease, transform 0.6s ease, box-shadow 0.15s ease-in-out;
+}
+
+.eco-animado .eco-aparecer.eco-arriba {
+    transform: translateY(-1.5rem);
+}
+
+.eco-animado .eco-aparecer.eco-visible {
+    opacity: 1;
+    transform: none;
+    /* Las tarjetas de una misma fila entran una tras otra. */
+    transition-delay: calc(var(--retraso, 0) * 120ms), calc(var(--retraso, 0) * 120ms), 0s;
+}
+
+/* --- Fondos animados: «Ecosistema orgánico» (manchas de luz) y «Río en movimiento» (ola) ---
+   Son solo decoración: van detrás del contenido, no reciben clics y solo animan transform (lo procesa la
+   tarjeta gráfica, sin trabar la página). Si la persona pidió menos movimiento en su sistema, quedan quietos. */
+.eco-con-fondo {
+    position: relative;
+    isolation: isolate; /* El fondo (z-index: -1) queda detrás del contenido, pero dentro de este bloque. */
+    overflow: hidden;   /* Las manchas y las olas no salen del bloque ni crean scroll horizontal. */
+}
+
+.eco-fondo {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.eco-mancha {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.45;
+    will-change: transform;
+    animation: eco-flotar 24s ease-in-out infinite alternate;
+}
+
+.eco-mancha-1 { width: 24rem; height: 24rem; top: -8rem; left: -6rem; background-color: #81c784; }
+.eco-mancha-2 { width: 20rem; height: 20rem; top: -4rem; right: -5rem; background-color: #4db6ac; animation-duration: 30s; animation-delay: -8s; }
+.eco-mancha-3 { width: 18rem; height: 18rem; bottom: -7rem; left: 35%; background-color: #aed581; animation-duration: 27s; animation-delay: -15s; }
+.eco-mancha-4 { width: 12rem; height: 12rem; top: 30%; right: 25%; background-color: #80deea; animation-duration: 21s; animation-delay: -4s; }
+
+/* Flotan y se estiran un poco (cambian de forma) en un ciclo lento. */
+@keyframes eco-flotar {
+    0%   { transform: translate(0, 0) scale(1, 1); }
+    33%  { transform: translate(3rem, 1.5rem) scale(1.15, 0.9); }
+    66%  { transform: translate(-2rem, 3rem) scale(0.9, 1.12); }
+    100% { transform: translate(2rem, -1.5rem) scale(1.05, 1); }
+}
+
+/* Iniciar sesión y registrarse: el fondo se ve poco y la tarjeta del formulario sigue en blanco puro. */
+.eco-fondo-suave {
+    min-height: 70vh;
+}
+
+.eco-fondo-suave .eco-mancha {
+    opacity: 0.22;
+}
+
+/* Abajo, el fondo se desvanece poco a poco en lugar de cortarse en línea recta. */
+.eco-fondo-suave .eco-fondo {
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+.eco-fondo-suave .eco-tarjeta {
+    background-color: #fff;
+    box-shadow: 0 0.5rem 1.5rem rgba(27, 94, 32, 0.08);
+}
+
+/* Franja del inicio que termina en una ola. */
+.eco-hero.eco-con-ola {
+    border-bottom: 0;
+    padding-bottom: 6.5rem; /* Espacio para que la ola no tape los botones. */
+}
+
+.eco-hero > .container {
+    position: relative;
+    z-index: 1;
+}
+
+.eco-ola {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px; /* Sin línea entre la ola y el contenido de abajo. */
+    height: 90px;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.eco-ola-capa {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%; /* Dos ciclos de la onda: se desplaza uno y se repite sin saltos. */
+    height: 100%;
+    will-change: transform;
+    animation: eco-ola-avanzar 18s linear infinite;
+}
+
+.eco-ola-1 { fill: #4dd0e1; opacity: 0.35; animation-duration: 26s; animation-direction: reverse; }
+.eco-ola-2 { fill: #66bb6a; opacity: 0.45; height: 78%; animation-duration: 19s; }
+.eco-ola-3 { fill: var(--bs-body-bg, #fff); height: 55%; animation-duration: 13s; }
+
+.eco-ola-espuma {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.75);
+    stroke-width: 3;
+    vector-effect: non-scaling-stroke; /* La línea mantiene su grosor aunque la onda se estire. */
+}
+
+@keyframes eco-ola-avanzar {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+
+/* Celulares: manchas más pequeñas y una ola más baja. */
+@media (max-width: 576px) {
+    .eco-mancha { filter: blur(45px); }
+    .eco-mancha-1 { width: 15rem; height: 15rem; }
+    .eco-mancha-2 { width: 13rem; height: 13rem; }
+    .eco-mancha-3 { width: 12rem; height: 12rem; }
+    .eco-mancha-4 { width: 8rem; height: 8rem; }
+    .eco-ola { height: 60px; }
+    .eco-hero.eco-con-ola { padding-bottom: 5rem; }
+}
+
+/* Menos movimiento (accesibilidad): el fondo se queda quieto. */
+@media (prefers-reduced-motion: reduce) {
+    .eco-mancha,
+    .eco-ola-capa {
+        animation: none;
+    }
+}

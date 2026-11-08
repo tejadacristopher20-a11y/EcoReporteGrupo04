@@ -1,5 +1,8 @@
 from django.contrib import admin
 
+from Eco_Reporte_Comunitario.admin_base import ModeloAdmin
+
+from .forms import EvidenciaAdminForm
 from .models import CategoriaProblema, Evidencia, HistorialEstado, ReporteAmbiental, Seguimiento
 
 # Sin borrado en bloque en todo el panel: la confirmación de esa acción es la respuesta a un formulario
@@ -9,7 +12,8 @@ admin.site.disable_action("delete_selected")
 
 
 @admin.register(CategoriaProblema)
-class CategoriaProblemaAdmin(admin.ModelAdmin):
+class CategoriaProblemaAdmin(ModeloAdmin):
+    nombre_femenino = True
     list_display = ("nombre", "activa")
     list_filter = ("activa",)
     search_fields = ("nombre",)
@@ -17,7 +21,12 @@ class CategoriaProblemaAdmin(admin.ModelAdmin):
 
 class EvidenciaInline(admin.TabularInline):
     model = Evidencia
+    form = EvidenciaAdminForm  # Convierte a WebP y valida los 5 MB, igual que la web.
     extra = 0
+
+    def get_max_num(self, request, obj=None, **kwargs):
+        # El mismo límite de fotografías que tiene en la web el rol de quien está conectado.
+        return request.user.maximo_evidencias()
 
 
 class SeguimientoInline(admin.TabularInline):
@@ -39,7 +48,7 @@ class HistorialEstadoInline(admin.TabularInline):
 
 
 @admin.register(ReporteAmbiental)
-class ReporteAmbientalAdmin(admin.ModelAdmin):
+class ReporteAmbientalAdmin(ModeloAdmin):
     list_display = ("titulo", "categoria", "nivel_gravedad", "estado", "usuario", "fecha_incidente")
     list_filter = ("estado", "nivel_gravedad", "categoria", "ubicacion__comunidad")
     search_fields = ("titulo", "descripcion")
@@ -48,7 +57,7 @@ class ReporteAmbientalAdmin(admin.ModelAdmin):
 
 
 @admin.register(Seguimiento)
-class SeguimientoAdmin(admin.ModelAdmin):
+class SeguimientoAdmin(ModeloAdmin):
     list_display = ("reporte", "tipo", "accion", "usuario", "fecha_creacion")
     list_filter = ("tipo",)
     search_fields = ("accion", "descripcion", "reporte__titulo")

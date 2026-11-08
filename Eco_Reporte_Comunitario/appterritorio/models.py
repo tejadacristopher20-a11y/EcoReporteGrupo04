@@ -4,6 +4,10 @@ from django.db.models import Q
 
 from Eco_Reporte_Comunitario.modelos_base import ModeloBase
 from Eco_Reporte_Comunitario.restricciones import (
+    LATITUD_MAXIMA,
+    LATITUD_MINIMA,
+    LONGITUD_MAXIMA,
+    LONGITUD_MINIMA,
     MINIMO_REFERENCIA,
     q_nombre_general,
     q_texto_libre,
@@ -83,13 +87,14 @@ class Ubicacion(ModeloBase):
     direccion = models.CharField(
         "dirección", max_length=250, blank=True, db_default="", validators=[validador_texto(MINIMO_REFERENCIA)]
     )
+    # Solo coordenadas dentro de El Salvador.
     latitud = models.DecimalField(
         max_digits=10, decimal_places=7, null=True, blank=True,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=[MinValueValidator(LATITUD_MINIMA), MaxValueValidator(LATITUD_MAXIMA)],
     )
     longitud = models.DecimalField(
         max_digits=10, decimal_places=7, null=True, blank=True,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=[MinValueValidator(LONGITUD_MINIMA), MaxValueValidator(LONGITUD_MAXIMA)],
     )
 
     class Meta:
@@ -113,14 +118,19 @@ class Ubicacion(ModeloBase):
                 ),
             ),
             models.CheckConstraint(
-                condition=Q(latitud__isnull=True) | Q(latitud__gte=-90, latitud__lte=90),
+                condition=Q(latitud__isnull=True) | Q(latitud__gte=LATITUD_MINIMA, latitud__lte=LATITUD_MAXIMA),
                 name="ck_ubicacion_latitud_rango",
-                violation_error_message="La latitud debe estar entre -90 y 90.",
+                violation_error_message=(
+                    f"La latitud debe estar dentro de El Salvador (entre {LATITUD_MINIMA} y {LATITUD_MAXIMA})."
+                ),
             ),
             models.CheckConstraint(
-                condition=Q(longitud__isnull=True) | Q(longitud__gte=-180, longitud__lte=180),
+                condition=Q(longitud__isnull=True)
+                | Q(longitud__gte=LONGITUD_MINIMA, longitud__lte=LONGITUD_MAXIMA),
                 name="ck_ubicacion_longitud_rango",
-                violation_error_message="La longitud debe estar entre -180 y 180.",
+                violation_error_message=(
+                    f"La longitud debe estar dentro de El Salvador (entre {LONGITUD_MINIMA} y {LONGITUD_MAXIMA})."
+                ),
             ),
             models.CheckConstraint(
                 condition=Q(latitud__isnull=True, longitud__isnull=True)

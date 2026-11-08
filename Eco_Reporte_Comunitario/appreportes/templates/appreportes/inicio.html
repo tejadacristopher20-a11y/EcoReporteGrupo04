@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 
 {% block contenido %}
-<section class="eco-hero py-5">
+<section class="eco-hero eco-con-fondo eco-con-ola pt-5">
+    {% include "includes/fondo_ecosistema.html" %}
     <div class="container">
         <h1 class="fw-bold">Reporta los problemas ambientales de tu comunidad</h1>
         <p class="lead">
@@ -22,6 +23,7 @@
             </p>
         {% endif %}
     </div>
+    {% include "includes/ola_rio.html" %}
 </section>
 
 <div class="container mt-4">
@@ -91,5 +93,7 @@
             </div>
         </div>
     </div>
+
+    {% include "includes/info_ambiente.html" %}
 </div>
 {% endblock %}

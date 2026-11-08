@@ -1,0 +1,9 @@
+{% if request.method == "POST" %}
+    {# Esta página es la respuesta a un formulario enviado (por ejemplo, con errores). Se guarda en el #}
+    {# historial como una página normal: al volver «Atrás» o recargar, el navegador no pide reenviar los datos. #}
+    <script>
+        if (window.history.replaceState) {
+            window.history.replaceState(null, "", window.location.href);
+        }
+    </script>
+{% endif %}

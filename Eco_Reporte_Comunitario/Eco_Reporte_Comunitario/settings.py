@@ -56,11 +56,16 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Usuario con sesión iniciada: el navegador no guarda copia de sus páginas (va después de AuthenticationMiddleware).
+    'Eco_Reporte_Comunitario.middleware.SinCopiaDePaginasPrivadasMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'Eco_Reporte_Comunitario.urls'
+
+# Formulario con el código de seguridad vencido: se recarga la página con un aviso, sin la página técnica.
+CSRF_FAILURE_VIEW = 'Eco_Reporte_Comunitario.errores.csrf_fallido'
 
 TEMPLATES = [
     {

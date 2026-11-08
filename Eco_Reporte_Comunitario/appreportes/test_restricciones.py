@@ -3,17 +3,21 @@
 Los cambios se hacen con update() o SQL directo para saltarse las validaciones de Python:
 así se comprueba que es la base de datos la que rechaza el dato.
 """
+import uuid
 from datetime import date, timedelta
 
 from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 from django.urls import reverse
 
+from Eco_Reporte_Comunitario.restricciones import restar_anios
 from appinstituciones.models import AsignacionReporte, Institucion
 from appterritorio.models import Comunidad, Ubicacion
 from appusuarios.models import Ciudadano, Usuario
 
 from .models import CategoriaProblema, HistorialEstado, ReporteAmbiental
+
+HACE_UN_MES = date.today() - timedelta(days=30)
 
 
 class RestriccionesBaseDeDatosTests(TestCase):
@@ -27,7 +31,7 @@ class RestriccionesBaseDeDatosTests(TestCase):
         cls.reporte = ReporteAmbiental.objects.create(
             usuario=cls.ciudadano, categoria=cls.categoria, ubicacion=cls.ubicacion,
             titulo="Quema de basura", descripcion="Queman basura todas las tardes.",
-            fecha_incidente=date(2026, 10, 1), nivel_gravedad=ReporteAmbiental.NivelGravedad.MEDIO,
+            fecha_incidente=HACE_UN_MES, nivel_gravedad=ReporteAmbiental.NivelGravedad.MEDIO,
         )
 
     def assertRechaza(self, modelo, pk, **valores):
@@ -44,6 +48,31 @@ class RestriccionesBaseDeDatosTests(TestCase):
         self.assertRechaza(ReporteAmbiental, self.reporte.pk, nivel_gravedad="URGENTE")
         self.assertRechaza(ReporteAmbiental, self.reporte.pk, fecha_incidente=date.today() + timedelta(days=1))
 
+    def test_fecha_del_incidente_maximo_cinco_anios_antes(self):
+        creado = ReporteAmbiental.objects.get(pk=self.reporte.pk).fecha_creacion.date()
+        self.assertRechaza(
+            ReporteAmbiental, self.reporte.pk, fecha_incidente=restar_anios(creado, 5) - timedelta(days=1)
+        )
+        # Hace 400 días (antes rechazado) y justo 5 años atrás: SQL Server los acepta.
+        for fecha in (date.today() - timedelta(days=400), restar_anios(creado, 5)):
+            ReporteAmbiental.objects.filter(pk=self.reporte.pk).update(fecha_incidente=fecha)
+            self.assertEqual(ReporteAmbiental.objects.get(pk=self.reporte.pk).fecha_incidente, fecha)
+
+    def test_codigo_de_envio_no_se_repite(self):
+        token = uuid.uuid4()
+        ReporteAmbiental.objects.filter(pk=self.reporte.pk).update(token_envio=token)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ReporteAmbiental.objects.create(
+                usuario=self.ciudadano, categoria=self.categoria, ubicacion=self.ubicacion,
+                titulo="Quema de basura", descripcion="Queman basura todas las tardes.",
+                fecha_incidente=HACE_UN_MES, nivel_gravedad=ReporteAmbiental.NivelGravedad.MEDIO,
+                token_envio=token,
+            )
+
+    def test_descripcion_de_categoria_es_texto_libre(self):
+        self.assertRechaza(CategoriaProblema, self.categoria.pk, descripcion="Basura")
+        self.assertRechaza(CategoriaProblema, self.categoria.pk, descripcion="@@@@ #### $$$$")
+
     def test_telefono_solo_numeros_y_un_guion(self):
         for invalido in ("7000-00@0", "70-00-0000", "-70000000", "7000 0000", "7000"):
             self.assertRechaza(Usuario, self.ciudadano.pk, telefono=invalido)
@@ -57,6 +86,9 @@ class RestriccionesBaseDeDatosTests(TestCase):
     def test_coordenadas_en_rango_y_completas(self):
         self.assertRechaza(Ubicacion, self.ubicacion.pk, latitud=200, longitud=0)
         self.assertRechaza(Ubicacion, self.ubicacion.pk, latitud=13.9)
+        # Coordenadas de Tokio: válidas en el mundo, pero fuera de El Salvador.
+        self.assertRechaza(Ubicacion, self.ubicacion.pk, latitud=35.6, longitud=139.7)
+        Ubicacion.objects.filter(pk=self.ubicacion.pk).update(latitud=14.1856102, longitud=-89.2255825)
 
     def test_historial_solo_acepta_transiciones_permitidas(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -84,7 +116,7 @@ class RestriccionesBaseDeDatosTests(TestCase):
                 "INSERT INTO appreportes_reporteambiental "
                 "(titulo, descripcion, fecha_incidente, nivel_gravedad, usuario_id, categoria_id, ubicacion_id) "
                 "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                ["Basura en la calle", "Hay bolsas de basura en la calle.", date(2026, 10, 2), "BAJO",
+                ["Basura en la calle", "Hay bolsas de basura en la calle.", HACE_UN_MES, "BAJO",
                  self.ciudadano.pk, self.categoria.pk, self.ubicacion.pk],
             )
         reporte = ReporteAmbiental.objects.get(titulo="Basura en la calle")
@@ -109,7 +141,7 @@ class RestriccionesFormularioTests(TestCase):
             "categoria": CategoriaProblema.objects.first().pk,
             "titulo": "Quema de basura",
             "descripcion": "1234567890",
-            "fecha_incidente": "2026-10-01",
+            "fecha_incidente": HACE_UN_MES.isoformat(),
             "nivel_gravedad": "MEDIO",
             "comunidad": Comunidad.objects.first().pk,
             "referencia": "Frente a la escuela",
