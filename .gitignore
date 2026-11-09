@@ -24,3 +24,6 @@ db.sqlite3
 Thumbs.db
 # Archivos subidos (evidencias)
 media/
+
+# Archivos estáticos que genera collectstatic (se crean en Render)
+staticfiles/
