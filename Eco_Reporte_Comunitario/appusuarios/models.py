@@ -205,10 +205,17 @@ class Usuario(AbstractUser, ModeloBase):
     def clean(self):
         # Las reglas de rol se validan con las restricciones de Meta (validate_constraints).
         super().clean()
+        # Antes de revisar que el correo no esté repetido (en PostgreSQL esa revisión distingue mayúsculas).
+        if self.email:
+            self.email = self.email.strip().lower()
         if self.rol_fijo:
             self.rol = self.rol_fijo
 
     def save(self, *args, **kwargs):
+        # El correo siempre en minúsculas, se cree la cuenta desde la web, el panel o la terminal.
+        # PostgreSQL distingue mayúsculas en los campos únicos: así no puede haber «Ana@…» y «ana@…».
+        if self.email:
+            self.email = self.email.strip().lower()
         if self.rol_fijo:
             self.rol = self.rol_fijo
         self.validar_reglas_de_rol()

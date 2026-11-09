@@ -643,3 +643,24 @@ class HistorialEstado(ModeloBase):
 
     def __str__(self):
         return f"{self.reporte}: {self.get_estado_anterior_display()} → {self.get_estado_nuevo_display()}"
+
+
+class ArchivoGuardado(models.Model):
+    """Archivos subidos (las fotografías de evidencia) guardados dentro de la base de datos.
+
+    Solo se usa en Render (ver STORAGES en settings.py y appreportes/almacenamiento.py): ahí el disco del servidor
+    se borra en cada despliegue, pero la base de datos se conserva. En la computadora local las fotos siguen en media/.
+    """
+
+    nombre = models.CharField(max_length=255, unique=True)
+    contenido = models.BinaryField()
+    tipo = models.CharField("tipo de archivo", max_length=100, blank=True, default="")
+    tamano = models.PositiveIntegerField("tamaño en bytes", default=0)
+    fecha_creacion = models.DateTimeField("fecha de creación", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "archivo guardado"
+        verbose_name_plural = "archivos guardados"
+
+    def __str__(self):
+        return self.nombre

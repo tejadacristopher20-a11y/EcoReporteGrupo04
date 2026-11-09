@@ -19,6 +19,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from appreportes.almacenamiento import servir_archivo
 from appusuarios.views import SalidaAdminView
 
 urlpatterns = [
@@ -30,4 +31,9 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
+    # Computadora local: las fotos se leen de la carpeta media/.
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Render (DEBUG desactivado): las fotos guardadas en la base de datos (appreportes/almacenamiento.py).
+# Va al final: en la computadora local, la línea de arriba atiende primero las fotos de la carpeta media/.
+urlpatterns += [path(f"{settings.MEDIA_URL.strip('/')}/<path:nombre>", servir_archivo, name="archivo_guardado")]

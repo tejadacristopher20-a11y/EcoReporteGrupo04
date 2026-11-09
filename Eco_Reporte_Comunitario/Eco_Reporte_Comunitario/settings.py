@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,13 +26,45 @@ load_dotenv(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
+# Identificar el entorno de Render
+EN_RENDER = os.environ.get("RENDER") == "true"
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ['SECRET_KEY']
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
+if not SECRET_KEY:
+    raise RuntimeError("La variable de entorno SECRET_KEY no está definida. Por favor, defínela en el archivo .env.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = not EN_RENDER
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+]
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Protección CSRF en formularios HTTPS
+CSRF_TRUSTED_ORIGINS = []
+
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(
+        f"https://{RENDER_EXTERNAL_HOSTNAME}"
+    )
+
+# Conexión segura cuando Render termina HTTPS
+if EN_RENDER:
+    SECURE_PROXY_SSL_HEADER = (
+        "HTTP_X_FORWARDED_PROTO",
+        "https"
+    )
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
 
 
 # Application definition
@@ -52,6 +85,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -88,22 +122,33 @@ WSGI_APPLICATION = 'Eco_Reporte_Comunitario.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-# SQL Server. Sin DB_USER se usa autenticación de Windows.
-DB_USER = os.environ.get('DB_USER', '')
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'mssql',
-        'NAME': os.environ['DB_NAME'],
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'USER': DB_USER,
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'OPTIONS': {
-            'driver': os.environ.get('DB_DRIVER', 'ODBC Driver 17 for SQL Server'),
-            'extra_params': 'TrustServerCertificate=yes' + ('' if DB_USER else ';Trusted_Connection=yes'),
-        },
+if EN_RENDER:
+    # Render: PostgreSQL. Render pone la dirección de la base en la variable DATABASE_URL.
+    DATABASES = {
+        'default': dj_database_url.config(
+            env='DATABASE_URL',
+            conn_max_age=600,
+        )
     }
-}
+else:
+    # Tu computadora: SQL Server. Sin DB_USER se usa autenticación de Windows.
+    DB_USER = os.environ.get('DB_USER', '')
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'mssql',
+            'NAME': os.environ['DB_NAME'],
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'USER': DB_USER,
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'OPTIONS': {
+                'driver': os.environ.get('DB_DRIVER', 'ODBC Driver 17 for SQL Server'),
+                'extra_params': 'TrustServerCertificate=yes' + ('' if DB_USER else ';Trusted_Connection=yes'),
+            },
+        }
+    }
+
 
 
 # Modelo de usuario personalizado (debe existir antes del primer migrate)
@@ -162,8 +207,38 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+if not EN_RENDER:
+    # En tu computadora no existe staticfiles/ (collectstatic solo se corre en Render): WhiteNoise avisaría
+    # «No directory at …staticfiles» al arrancar. El aviso no afecta en nada, así que se oculta aquí.
+    import warnings  # noqa: E402
+
+    warnings.filterwarnings("ignore", message="No directory at")
+
+STORAGES = {
+    "default": {
+        # Fotografías de evidencia. Render: dentro de la base de datos, porque el disco del servidor se borra en
+        # cada despliegue (appreportes/almacenamiento.py). En tu computadora: la carpeta media/, como siempre.
+        "BACKEND": (
+            "appreportes.almacenamiento.AlmacenamientoEnBaseDeDatos"
+            if EN_RENDER
+            else "django.core.files.storage.FileSystemStorage"
+        ),
+    },
+    "staticfiles": {
+        # Render: WhiteNoise comprime los archivos y les pone un código en el nombre (estilos.a1b2c3.css)
+        # que cambia con cada versión. En tu computadora, el almacenamiento normal (así funcionan las pruebas).
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if EN_RENDER
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        ),
+    },
+}
+
 
 # Archivos subidos por los usuarios (fotografías de evidencia)
 MEDIA_URL = 'media/'

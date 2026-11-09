@@ -17,9 +17,32 @@ from django.db.models.lookups import GreaterThanOrEqual, LessThanOrEqual
 from django.utils.deconstruct import deconstructible
 
 
+def patron_like_a_regex(patron):
+    """Traduce un patrón LIKE de SQL Server (con %, _ y clases [...]) a una expresión regular equivalente.
+
+    «%[A-Z]%» → «^.*[A-Z].*$». Las clases [...] y [^...] se escriben igual en las dos sintaxis; el resto de
+    los caracteres se toman literalmente. Así la misma restricción funciona en SQL Server y en PostgreSQL.
+    """
+    partes, i = [], 0
+    while i < len(patron):
+        caracter = patron[i]
+        if caracter == "[":
+            fin = patron.index("]", i + 1)
+            partes.append(patron[i:fin + 1])
+            i = fin + 1
+            continue
+        partes.append(".*" if caracter == "%" else "." if caracter == "_" else re.escape(caracter))
+        i += 1
+    return "^" + "".join(partes) + "$"
+
+
 @CharField.register_lookup
 class Like(Lookup):
-    """campo__like='patrón' genera «campo LIKE 'patrón'» (comodines y clases [...] de SQL Server)."""
+    """campo__like='patrón' genera «campo LIKE 'patrón'» (comodines y clases [...] de SQL Server).
+
+    En PostgreSQL, LIKE no entiende las clases [...]: ahí se traduce a una expresión regular (operador ~)
+    que acepta y rechaza exactamente los mismos textos.
+    """
 
     lookup_name = "like"
 
@@ -28,9 +51,18 @@ class Like(Lookup):
         rhs, rhs_params = self.process_rhs(compiler, connection)
         return f"{lhs} LIKE {rhs}", (*lhs_params, *rhs_params)
 
+    def as_postgresql(self, compiler, connection):
+        lhs, lhs_params = self.process_lhs(compiler, connection)
+        rhs, rhs_params = self.process_rhs(compiler, connection)
+        rhs_params = [patron_like_a_regex(p) if isinstance(p, str) else p for p in rhs_params]
+        return f"{lhs}::text ~ {rhs}", (*lhs_params, *rhs_params)
+
 
 class RestarAnios(Func):
-    """RestarAnios(fecha, 1) genera «DATEADD(year, -1, fecha)» de SQL Server."""
+    """RestarAnios(fecha, 1) genera «DATEADD(year, -1, fecha)» de SQL Server.
+
+    En PostgreSQL se escribe «fecha - INTERVAL '1 years'». En los dos, el 29 de febrero pasa al 28.
+    """
 
     function = "DATEADD"
     template = "%(function)s(year, -%(anios)d, %(expressions)s)"
@@ -38,6 +70,12 @@ class RestarAnios(Func):
 
     def __init__(self, expresion, anios=1, **extra):
         super().__init__(expresion, anios=anios, **extra)
+
+    def as_postgresql(self, compiler, connection, **extra_context):
+        return self.as_sql(
+            compiler, connection, template="CAST((%(expressions)s - INTERVAL '%(anios)d years') AS date)",
+            **extra_context,
+        )
 
 
 def restar_anios(fecha, anios=1):
