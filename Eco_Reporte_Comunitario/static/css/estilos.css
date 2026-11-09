@@ -308,3 +308,102 @@
         animation: none;
     }
 }
+
+/* --- Botón «Contacto» y panel de contacto que sube desde abajo --- */
+.eco-boton-contacto {
+    white-space: nowrap;
+}
+
+/* El pie de página queda por encima del panel: al llegar al final, el panel sale por detrás y sobresale. */
+.eco-footer {
+    position: relative;
+    z-index: 1031;
+}
+
+.eco-contacto {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1030;
+    max-height: 80vh;
+    overflow-y: auto;
+    background-color: var(--eco-verde-oscuro);
+    color: #fff;
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 -0.5rem 1.5rem rgba(0, 0, 0, 0.25);
+    /* --eco-pie-visible: parte del pie que se ve en pantalla (la calcula contacto.js), para que los datos
+       queden por encima del pie y el resto del panel quede por detrás. */
+    padding: 1.25rem 0 calc(1.25rem + var(--eco-pie-visible, 0px));
+    transform: translateY(100%);
+    visibility: hidden; /* Cerrado: no se ve ni se puede enfocar con el teclado. */
+    transition: transform 0.35s ease, visibility 0s linear 0.35s;
+}
+
+.eco-contacto.eco-abierto {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.35s ease;
+}
+
+/* Con el panel abierto, el contenido termina más arriba (contacto.js calcula --eco-alto-contacto):
+   al bajar hasta el final, las últimas tarjetas quedan por encima del panel y no debajo de él. */
+.eco-contacto-abierto > main {
+    padding-bottom: var(--eco-alto-contacto, 0px);
+}
+
+.eco-contacto-cerrar {
+    position: absolute;
+    top: 0;
+    right: 0.75rem;
+}
+
+.eco-contacto-suave {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.eco-contacto i {
+    color: #a5d6a7;
+}
+
+/* El correo es un enlace: blanco y subrayado sobre el verde oscuro, para que se lea y se note que se puede tocar. */
+.eco-contacto-enlace {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere; /* En celulares angostos, el correo largo baja de línea en vez de salirse. */
+}
+
+.eco-contacto-enlace:hover,
+.eco-contacto-enlace:focus {
+    color: #c8e6c9;
+}
+/* Celulares: el nombre, el botón «Contacto» y el menú ☰ deben caber en una sola fila. El botón muestra solo
+   el ícono (sigue llamándose «Contacto» para los lectores de pantalla) y, si aún no alcanza el espacio
+   (celulares muy angostos), el nombre se recorta con «…» en lugar de bajar el menú a otra línea. */
+@media (max-width: 575.98px) {
+    .eco-contacto-texto {
+        display: none;
+    }
+
+    .eco-navbar .navbar-brand {
+        flex: 1 1 0; /* Ocupa el espacio que sobra: así el botón y el menú ☰ nunca bajan a otra fila. */
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-right: 0.5rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .eco-navbar .navbar-toggler {
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .eco-contacto,
+    .eco-contacto.eco-abierto {
+        transition: none;
+    }
+}

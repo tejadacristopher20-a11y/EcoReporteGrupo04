@@ -1,0 +1,39 @@
+{# Panel de contacto: sube desde abajo al tocar el botón «Contacto» de la barra verde (static/js/contacto.js). #}
+{# Siempre aparece en la parte baja de la pantalla; si se llega al final de la página, queda por detrás del #}
+{# pie de página y sobresale por encima de él. Los datos (correo, teléfono y dirección) se completan aquí. #}
+<section id="eco-contacto" class="eco-contacto" aria-labelledby="eco-contacto-titulo" aria-hidden="true">
+    <div class="container position-relative">
+        <button type="button" class="btn-close btn-close-white eco-contacto-cerrar" aria-label="Cerrar contacto"></button>
+        <div class="row g-3 align-items-start">
+            <div class="col-md-6 pe-5 pe-md-0">
+                <h2 class="h5 mb-1" id="eco-contacto-titulo">
+                    <i class="bi bi-headset" aria-hidden="true"></i> Contacto
+                </h2>
+                <p class="small mb-0 eco-contacto-suave">
+                    ¿Tienes dudas o necesitas ayuda con un reporte? Comunícate con nosotros.
+                </p>
+            </div>
+            {# En pantallas grandes, el bloque de datos va en el lado derecho (justify-content-md-end), pero las #}
+            {# tres líneas quedan alineadas a la izquierda entre sí. pe-md-5 deja espacio para la X de cerrar. #}
+            <div class="col-md-6 small pe-md-5 d-md-flex justify-content-md-end">
+                <div class="eco-contacto-datos">
+                    <p class="mb-1">
+                        <i class="bi bi-envelope" aria-hidden="true"></i> <strong>Correo:</strong>
+                        {# Al tocarlo, abre Gmail en una pestaña nueva con un mensaje dirigido a esta dirección, listo #}
+                        {# para escribir y enviar desde la cuenta de la persona (no abre esta cuenta). #}
+                        <a class="eco-contacto-dato eco-contacto-enlace" target="_blank" rel="noopener"
+                           href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=ecoreporte2026@gmail.com&amp;su=Consulta%20desde%20EcoReporte%20Comunitario">ecoreporte2026@gmail.com</a>
+                    </p>
+                    <p class="mb-1">
+                        <i class="bi bi-telephone" aria-hidden="true"></i> <strong>Teléfono:</strong>
+                        <span class="eco-contacto-dato">7660-5857</span>
+                    </p>
+                    <p class="mb-0">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i> <strong>Dirección:</strong>
+                        <span class="eco-contacto-dato">El Slavador, Chalatenango Centro</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -753,3 +753,47 @@ class VistasReportesTests(TestCase):
         # Las demás pantallas no llevan fondo animado.
         self.client.force_login(self.ciudadano)
         self.assertNotContains(self.client.get(reverse("appreportes:crear")), "eco-fondo")
+
+    # --- Botón «Contacto» y panel de contacto ---
+
+    def test_boton_y_panel_de_contacto_en_todas_las_paginas(self):
+        reporte = self.crear_reporte()
+        paginas = [reverse("appreportes:inicio"), reverse("appreportes:lista"), reporte.get_absolute_url(),
+                   reverse("appusuarios:ingresar"), reverse("appusuarios:registro")]
+        for url in paginas:
+            with self.subTest(url=url):
+                respuesta = self.client.get(url)
+                # El botón apunta al panel, y el panel empieza cerrado.
+                self.assertContains(respuesta, 'id="eco-boton-contacto"')
+                self.assertContains(respuesta, 'aria-controls="eco-contacto"')
+                self.assertContains(respuesta, 'id="eco-contacto" class="eco-contacto"')
+                self.assertContains(respuesta, 'aria-hidden="true"')
+                for dato in ("Correo:", "Teléfono:", "Dirección:"):
+                    self.assertContains(respuesta, dato)
+                self.assertContains(respuesta, "/static/js/contacto.js")
+        # También con sesión iniciada (la barra cambia).
+        self.client.force_login(self.ciudadano)
+        self.assertContains(self.client.get(reverse("appreportes:panel")), 'id="eco-boton-contacto"')
+
+    def test_estilos_y_scripts_llevan_su_version(self):
+        # Así el navegador descarga la versión nueva cada vez que el archivo cambia, sin Ctrl + F5.
+        import re
+
+        html = self.client.get(reverse("appreportes:inicio")).content.decode()
+        for archivo in ("css/estilos.css", "js/aparecer.js", "js/contacto.js"):
+            with self.subTest(archivo=archivo):
+                self.assertRegex(html, rf"/static/{re.escape(archivo)}\?v=\d+")
+
+    def test_correo_de_contacto_abre_gmail_para_escribir(self):
+        respuesta = self.client.get(reverse("appreportes:inicio"))
+        self.assertContains(
+            respuesta,
+            'href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=ecoreporte2026@gmail.com'
+            '&amp;su=Consulta%20desde%20EcoReporte%20Comunitario">ecoreporte2026@gmail.com</a>',
+        )
+        self.assertContains(respuesta, 'target="_blank" rel="noopener"')
+        self.assertNotContains(respuesta, "mailto:")
+        self.assertNotContains(respuesta, "Copiar correo")
+        # Los datos van en el lado derecho, pero alineados a la izquierda entre sí (ya no text-md-end).
+        self.assertContains(respuesta, 'class="eco-contacto-datos"')
+        self.assertNotContains(respuesta, "text-md-end")
