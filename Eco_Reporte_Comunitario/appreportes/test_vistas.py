@@ -40,13 +40,21 @@ class VistasReportesTests(TestCase):
     def setUpTestData(cls):
         cls.comunidad = Comunidad.objects.get(nombre="Las Toreras")
         cls.categoria = CategoriaProblema.objects.get(nombre="Quema de desechos")
-        cls.institucion = Institucion.objects.create(nombre="Alcaldía", tipo=Institucion.Tipo.ALCALDIA)
-        cls.ciudadano = Ciudadano.objects.create_user("c@eco.sv", "c@eco.sv", "clave-segura-1", first_name="Carlos")
-        cls.otro = Ciudadano.objects.create_user("o@eco.sv", "o@eco.sv", "clave-segura-1")
+        cls.institucion = Institucion.objects.create(
+            nombre="Alcaldía", tipo=Institucion.Tipo.ALCALDIA
+        )
+        cls.ciudadano = Ciudadano.objects.create_user(
+            "c@eco.sv", "c@eco.sv", "clave-segura-1", first_name="Carlos"
+        )
+        cls.otro = Ciudadano.objects.create_user(
+            "o@eco.sv", "o@eco.sv", "clave-segura-1"
+        )
         cls.responsable = Responsable.objects.create_user(
             "r@eco.sv", "r@eco.sv", "clave-segura-1", institucion=cls.institucion
         )
-        cls.admin = Administrador.objects.create_user("a@eco.sv", "a@eco.sv", "clave-segura-1")
+        cls.admin = Administrador.objects.create_user(
+            "a@eco.sv", "a@eco.sv", "clave-segura-1"
+        )
 
     def datos_reporte(self, **cambios):
         datos = {
@@ -66,10 +74,16 @@ class VistasReportesTests(TestCase):
 
     def crear_reporte(self, usuario=None, asignado=True):
         """Reporte de prueba. Por defecto, asignado a la institución del responsable (lo atiende él)."""
-        ubicacion = Ubicacion.objects.create(comunidad=self.comunidad, referencia="Calle principal")
+        ubicacion = Ubicacion.objects.create(
+            comunidad=self.comunidad, referencia="Calle principal"
+        )
         reporte = ReporteAmbiental.objects.create(
-            usuario=usuario or self.ciudadano, categoria=self.categoria, ubicacion=ubicacion,
-            titulo="Basura acumulada", descripcion="Hay basura en la calle", fecha_incidente=HACE_UN_MES,
+            usuario=usuario or self.ciudadano,
+            categoria=self.categoria,
+            ubicacion=ubicacion,
+            titulo="Basura acumulada",
+            descripcion="Hay basura en la calle",
+            fecha_incidente=HACE_UN_MES,
             nivel_gravedad="MEDIO",
         )
         if asignado:
@@ -78,7 +92,11 @@ class VistasReportesTests(TestCase):
 
     def test_paginas_publicas(self):
         reporte = self.crear_reporte()
-        for url in (reverse("appreportes:inicio"), reverse("appreportes:lista"), reporte.get_absolute_url()):
+        for url in (
+            reverse("appreportes:inicio"),
+            reverse("appreportes:lista"),
+            reporte.get_absolute_url(),
+        ):
             with self.subTest(url=url):
                 respuesta = self.client.get(url)
                 self.assertEqual(respuesta.status_code, 200)
@@ -86,11 +104,16 @@ class VistasReportesTests(TestCase):
 
     def test_crear_reporte_exige_sesion(self):
         respuesta = self.client.get(reverse("appreportes:crear"))
-        self.assertRedirects(respuesta, f"{reverse('appusuarios:ingresar')}?next={reverse('appreportes:crear')}")
+        self.assertRedirects(
+            respuesta,
+            f"{reverse('appusuarios:ingresar')}?next={reverse('appreportes:crear')}",
+        )
 
     def test_ciudadano_crea_reporte_con_foto(self):
         self.client.force_login(self.ciudadano)
-        respuesta = self.client.post(reverse("appreportes:crear"), self.datos_reporte(foto=imagen_de_prueba()))
+        respuesta = self.client.post(
+            reverse("appreportes:crear"), self.datos_reporte(foto=imagen_de_prueba())
+        )
         reporte = ReporteAmbiental.objects.get()
         self.assertRedirects(respuesta, reporte.get_absolute_url())
         self.assertEqual(reporte.usuario, self.ciudadano)
@@ -100,7 +123,10 @@ class VistasReportesTests(TestCase):
 
     def test_no_acepta_fecha_futura(self):
         self.client.force_login(self.ciudadano)
-        respuesta = self.client.post(reverse("appreportes:crear"), self.datos_reporte(fecha_incidente="2099-01-01"))
+        respuesta = self.client.post(
+            reverse("appreportes:crear"),
+            self.datos_reporte(fecha_incidente="2099-01-01"),
+        )
         self.assertContains(respuesta, "no puede ser futura")
         self.assertFalse(ReporteAmbiental.objects.exists())
 
@@ -108,7 +134,8 @@ class VistasReportesTests(TestCase):
         self.client.force_login(self.ciudadano)
         antigua = restar_anios(timezone.now().date(), 5) - timedelta(days=1)
         respuesta = self.client.post(
-            reverse("appreportes:crear"), self.datos_reporte(fecha_incidente=antigua.isoformat())
+            reverse("appreportes:crear"),
+            self.datos_reporte(fecha_incidente=antigua.isoformat()),
         )
         self.assertContains(respuesta, "hace más de 5 años")
         self.assertFalse(ReporteAmbiental.objects.exists())
@@ -122,20 +149,31 @@ class VistasReportesTests(TestCase):
         limite = restar_anios(hoy, 5)  # Justo 5 años atrás: todavía se acepta.
         for numero, fecha in enumerate((hace_cuatro_anios, limite)):
             with self.subTest(fecha=fecha):
-                self.client.post(url, self.datos_reporte(
-                    fecha_incidente=fecha.isoformat(), titulo=f"Quema de basura número {numero + 1}"
-                ))
-                self.assertTrue(ReporteAmbiental.objects.filter(fecha_incidente=fecha).exists())
+                self.client.post(
+                    url,
+                    self.datos_reporte(
+                        fecha_incidente=fecha.isoformat(),
+                        titulo=f"Quema de basura número {numero + 1}",
+                    ),
+                )
+                self.assertTrue(
+                    ReporteAmbiental.objects.filter(fecha_incidente=fecha).exists()
+                )
 
     def test_calendario_muestra_el_limite_de_cinco_anios(self):
         self.client.force_login(self.ciudadano)
         respuesta = self.client.get(reverse("appreportes:crear"))
-        self.assertContains(respuesta, f'min="{restar_anios(timezone.now().date(), 5).isoformat()}"')
+        self.assertContains(
+            respuesta, f'min="{restar_anios(timezone.now().date(), 5).isoformat()}"'
+        )
         self.assertContains(respuesta, "Puede ser de hasta 5 años atrás.")
 
     def test_no_acepta_coordenadas_fuera_de_el_salvador(self):
         self.client.force_login(self.ciudadano)
-        self.client.post(reverse("appreportes:crear"), self.datos_reporte(latitud="35.6", longitud="139.7"))
+        self.client.post(
+            reverse("appreportes:crear"),
+            self.datos_reporte(latitud="35.6", longitud="139.7"),
+        )
         self.assertFalse(ReporteAmbiental.objects.exists())
 
     def test_doble_clic_no_crea_reporte_duplicado(self):
@@ -151,7 +189,10 @@ class VistasReportesTests(TestCase):
         reporte = self.crear_reporte()
         self.client.force_login(self.ciudadano)
         for titulo in ("Basura acumulada en la calle", "Basura acumulada junto al río"):
-            self.client.post(reverse("appreportes:editar", args=[reporte.pk]), self.datos_reporte(titulo=titulo))
+            self.client.post(
+                reverse("appreportes:editar", args=[reporte.pk]),
+                self.datos_reporte(titulo=titulo),
+            )
         self.assertEqual(ReporteAmbiental.objects.count(), 1)
         reporte.refresh_from_db()
         self.assertEqual(reporte.titulo, "Basura acumulada junto al río")
@@ -159,10 +200,13 @@ class VistasReportesTests(TestCase):
     def test_maximo_cinco_fotos_por_reporte(self):
         reporte = self.crear_reporte()
         for numero in range(ReporteAmbiental.MAXIMO_EVIDENCIAS):
-            Evidencia.objects.create(reporte=reporte, imagen=f"evidencias/foto{numero}.webp")
+            Evidencia.objects.create(
+                reporte=reporte, imagen=f"evidencias/foto{numero}.webp"
+            )
         self.client.force_login(self.ciudadano)
         respuesta = self.client.post(
-            reverse("appreportes:agregar_evidencia", args=[reporte.pk]), {"imagen": imagen_de_prueba()}
+            reverse("appreportes:agregar_evidencia", args=[reporte.pk]),
+            {"imagen": imagen_de_prueba()},
         )
         self.assertContains(respuesta, "máximo de 5 fotografías")
         self.assertEqual(reporte.evidencias.count(), ReporteAmbiental.MAXIMO_EVIDENCIAS)
@@ -170,7 +214,9 @@ class VistasReportesTests(TestCase):
     def test_responsable_puede_subir_hasta_diez_fotos(self):
         reporte = self.crear_reporte()
         for numero in range(5):
-            Evidencia.objects.create(reporte=reporte, imagen=f"evidencias/foto{numero}.webp")
+            Evidencia.objects.create(
+                reporte=reporte, imagen=f"evidencias/foto{numero}.webp"
+            )
         url = reverse("appreportes:agregar_evidencia", args=[reporte.pk])
 
         # Con 5 fotos, el ciudadano ya no puede, pero el responsable sí.
@@ -183,7 +229,9 @@ class VistasReportesTests(TestCase):
 
         # Al llegar a 10, el responsable también queda topado.
         for numero in range(6, 10):
-            Evidencia.objects.create(reporte=reporte, imagen=f"evidencias/foto{numero}.webp")
+            Evidencia.objects.create(
+                reporte=reporte, imagen=f"evidencias/foto{numero}.webp"
+            )
         respuesta = self.client.post(url, {"imagen": imagen_de_prueba()})
         self.assertContains(respuesta, "máximo de 10 fotografías")
         self.assertEqual(reporte.evidencias.count(), 10)
@@ -195,7 +243,9 @@ class VistasReportesTests(TestCase):
 
     def test_ficha_del_reporte_en_el_panel_de_administracion(self):
         reporte = self.crear_reporte()
-        Administrador.objects.filter(pk=self.admin.pk).update(is_staff=True, is_superuser=True)
+        Administrador.objects.filter(pk=self.admin.pk).update(
+            is_staff=True, is_superuser=True
+        )
         self.client.force_login(self.admin)
         url = reverse("admin:appreportes_reporteambiental_change", args=[reporte.pk])
         self.assertEqual(self.client.get(url).status_code, 200)
@@ -203,10 +253,13 @@ class VistasReportesTests(TestCase):
     def test_administrador_tiene_el_mismo_limite_de_cinco_fotos(self):
         reporte = self.crear_reporte()
         for numero in range(5):
-            Evidencia.objects.create(reporte=reporte, imagen=f"evidencias/foto{numero}.webp")
+            Evidencia.objects.create(
+                reporte=reporte, imagen=f"evidencias/foto{numero}.webp"
+            )
         self.client.force_login(self.admin)
         respuesta = self.client.post(
-            reverse("appreportes:agregar_evidencia", args=[reporte.pk]), {"imagen": imagen_de_prueba()}
+            reverse("appreportes:agregar_evidencia", args=[reporte.pk]),
+            {"imagen": imagen_de_prueba()},
         )
         self.assertContains(respuesta, "máximo de 5 fotografías")
         self.assertEqual(reporte.evidencias.count(), 5)
@@ -223,7 +276,10 @@ class VistasReportesTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 403)
 
         self.client.force_login(self.ciudadano)
-        respuesta = self.client.post(url, self.datos_reporte(titulo="Título corregido", referencia="Otra referencia"))
+        respuesta = self.client.post(
+            url,
+            self.datos_reporte(titulo="Título corregido", referencia="Otra referencia"),
+        )
         self.assertRedirects(respuesta, reporte.get_absolute_url())
         reporte.refresh_from_db()
         self.assertEqual(reporte.titulo, "Título corregido")
@@ -240,10 +296,14 @@ class VistasReportesTests(TestCase):
         reporte = self.crear_reporte()
         reporte.cambiar_estado("EN_PROCESO", self.responsable)
         self.client.force_login(self.ciudadano)
-        respuesta = self.client.get(reverse("appreportes:editar", args=[reporte.pk]), follow=True)
+        respuesta = self.client.get(
+            reverse("appreportes:editar", args=[reporte.pk]), follow=True
+        )
         self.assertRedirects(respuesta, reporte.get_absolute_url())
         self.assertContains(respuesta, "ya no se puede editar")
-        respuesta = self.client.post(reverse("appreportes:eliminar", args=[reporte.pk]), follow=True)
+        respuesta = self.client.post(
+            reverse("appreportes:eliminar", args=[reporte.pk]), follow=True
+        )
         self.assertRedirects(respuesta, reporte.get_absolute_url())
         self.assertContains(respuesta, "ya no se puede eliminar")
         self.assertTrue(ReporteAmbiental.objects.filter(pk=reporte.pk).exists())
@@ -251,8 +311,18 @@ class VistasReportesTests(TestCase):
     def test_responsable_no_edita_ni_elimina(self):
         reporte = self.crear_reporte()
         self.client.force_login(self.responsable)
-        self.assertEqual(self.client.get(reverse("appreportes:editar", args=[reporte.pk])).status_code, 403)
-        self.assertEqual(self.client.post(reverse("appreportes:eliminar", args=[reporte.pk])).status_code, 403)
+        self.assertEqual(
+            self.client.get(
+                reverse("appreportes:editar", args=[reporte.pk])
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post(
+                reverse("appreportes:eliminar", args=[reporte.pk])
+            ).status_code,
+            403,
+        )
 
     def test_administrador_elimina_cualquier_reporte(self):
         reporte = self.crear_reporte()
@@ -274,7 +344,10 @@ class VistasReportesTests(TestCase):
         self.assertContains(respuesta, "Tu información fue agregada al reporte.")
         self.assertContains(respuesta, "Aporte del ciudadano")
 
-        self.client.post(reverse("appreportes:agregar_evidencia", args=[reporte.pk]), {"imagen": imagen_de_prueba()})
+        self.client.post(
+            reverse("appreportes:agregar_evidencia", args=[reporte.pk]),
+            {"imagen": imagen_de_prueba()},
+        )
         self.assertEqual(reporte.evidencias.count(), 1)
 
     def test_ciudadano_no_aporta_en_reporte_ajeno_ni_cerrado(self):
@@ -282,19 +355,31 @@ class VistasReportesTests(TestCase):
         url_aporte = reverse("appreportes:aportar_informacion", args=[reporte.pk])
 
         self.client.force_login(self.otro)
-        respuesta = self.client.post(url_aporte, {"descripcion": "Información ajena"}, follow=True)
-        self.assertContains(respuesta, "Solo el autor del reporte puede agregar información.")
         respuesta = self.client.post(
-            reverse("appreportes:agregar_evidencia", args=[reporte.pk]), {"imagen": imagen_de_prueba()}, follow=True
+            url_aporte, {"descripcion": "Información ajena"}, follow=True
         )
-        self.assertContains(respuesta, "Solo el autor del reporte puede agregar fotografías.")
+        self.assertContains(
+            respuesta, "Solo el autor del reporte puede agregar información."
+        )
+        respuesta = self.client.post(
+            reverse("appreportes:agregar_evidencia", args=[reporte.pk]),
+            {"imagen": imagen_de_prueba()},
+            follow=True,
+        )
+        self.assertContains(
+            respuesta, "Solo el autor del reporte puede agregar fotografías."
+        )
 
         reporte.cambiar_estado("DESCARTADO", self.responsable, "Duplicado")
         self.client.force_login(self.ciudadano)
-        respuesta = self.client.post(url_aporte, {"descripcion": "Caso ya cerrado"}, follow=True)
+        respuesta = self.client.post(
+            url_aporte, {"descripcion": "Caso ya cerrado"}, follow=True
+        )
         self.assertRedirects(respuesta, reporte.get_absolute_url())
         self.assertContains(respuesta, "El caso ya está cerrado")
-        self.assertEqual(reporte.seguimientos.filter(tipo="APORTE_CIUDADANO").count(), 0)
+        self.assertEqual(
+            reporte.seguimientos.filter(tipo="APORTE_CIUDADANO").count(), 0
+        )
         self.assertEqual(reporte.evidencias.count(), 0)
 
     def test_descartar_sin_motivo_muestra_error(self):
@@ -302,12 +387,18 @@ class VistasReportesTests(TestCase):
         self.client.force_login(self.responsable)
         url_estado = reverse("appreportes:cambiar_estado", args=[reporte.pk])
 
-        respuesta = self.client.post(url_estado, {"estado": "DESCARTADO", "observacion": ""}, follow=True)
+        respuesta = self.client.post(
+            url_estado, {"estado": "DESCARTADO", "observacion": ""}, follow=True
+        )
         self.assertContains(respuesta, "Indique el motivo")
         reporte.refresh_from_db()
         self.assertEqual(reporte.estado, ReporteAmbiental.Estado.PENDIENTE)
 
-        respuesta = self.client.post(url_estado, {"estado": "DESCARTADO", "observacion": "Reporte duplicado"}, follow=True)
+        respuesta = self.client.post(
+            url_estado,
+            {"estado": "DESCARTADO", "observacion": "Reporte duplicado"},
+            follow=True,
+        )
         self.assertContains(respuesta, "Reporte descartado.")
         self.assertContains(respuesta, "Reporte duplicado")
 
@@ -317,23 +408,46 @@ class VistasReportesTests(TestCase):
         # El ciudadano no puede cambiar el estado ni asignar.
         self.client.force_login(self.ciudadano)
         url_estado = reverse("appreportes:cambiar_estado", args=[reporte.pk])
-        self.assertEqual(self.client.post(url_estado, {"estado": "EN_PROCESO"}).status_code, 403)
+        self.assertEqual(
+            self.client.post(url_estado, {"estado": "EN_PROCESO"}).status_code, 403
+        )
         url_asignar = reverse("appreportes:asignar", args=[reporte.pk])
-        self.assertEqual(self.client.post(url_asignar, {"institucion": self.institucion.pk}).status_code, 403)
+        self.assertEqual(
+            self.client.post(
+                url_asignar, {"institucion": self.institucion.pk}
+            ).status_code,
+            403,
+        )
 
         # El responsable lo ve en su panel, no puede asignarlo a otra institución, lo toma y lo atiende.
         self.client.force_login(self.responsable)
-        self.assertContains(self.client.get(reverse("appreportes:panel")), reporte.titulo)
-        self.assertEqual(self.client.post(url_asignar, {"institucion": self.institucion.pk}).status_code, 403)
-        self.client.post(reverse("appreportes:tomar", args=[reporte.pk]), {"observacion": ""})
+        self.assertContains(
+            self.client.get(reverse("appreportes:panel")), reporte.titulo
+        )
+        self.assertEqual(
+            self.client.post(
+                url_asignar, {"institucion": self.institucion.pk}
+            ).status_code,
+            403,
+        )
+        self.client.post(
+            reverse("appreportes:tomar", args=[reporte.pk]), {"observacion": ""}
+        )
         self.assertEqual(reporte.asignacion_activa().institucion, self.institucion)
         self.client.post(url_estado, {"estado": "EN_PROCESO"})
         self.client.post(
             reverse("appreportes:registrar_seguimiento", args=[reporte.pk]),
             {"accion": "Limpieza", "descripcion": "Se limpió el lugar."},
         )
-        self.client.post(reverse("appreportes:agregar_evidencia", args=[reporte.pk]), {"imagen": imagen_de_prueba()})
-        respuesta = self.client.post(url_estado, {"estado": "RESUELTO", "observacion": "Caso cerrado"}, follow=True)
+        self.client.post(
+            reverse("appreportes:agregar_evidencia", args=[reporte.pk]),
+            {"imagen": imagen_de_prueba()},
+        )
+        respuesta = self.client.post(
+            url_estado,
+            {"estado": "RESUELTO", "observacion": "Caso cerrado"},
+            follow=True,
+        )
 
         self.assertContains(respuesta, "El estado del reporte fue actualizado.")
         reporte.refresh_from_db()
@@ -347,7 +461,9 @@ class VistasReportesTests(TestCase):
         reporte.cambiar_estado("EN_PROCESO", self.admin)
         self.client.force_login(self.admin)
         respuesta = self.client.post(
-            reverse("appreportes:cambiar_estado", args=[reporte.pk]), {"estado": "RESUELTO"}, follow=True
+            reverse("appreportes:cambiar_estado", args=[reporte.pk]),
+            {"estado": "RESUELTO"},
+            follow=True,
         )
         self.assertContains(respuesta, "Registre al menos un seguimiento")
 
@@ -372,20 +488,27 @@ class VistasReportesTests(TestCase):
 
     def test_filtros(self):
         self.crear_reporte()
-        respuesta = self.client.get(reverse("appreportes:lista"), {"nivel_gravedad": "ALTO"})
+        respuesta = self.client.get(
+            reverse("appreportes:lista"), {"nivel_gravedad": "ALTO"}
+        )
         self.assertEqual(respuesta.context["page_obj"].paginator.count, 0)
-        respuesta = self.client.get(reverse("appreportes:lista"), {"buscar": "basura", "estado": "PENDIENTE"})
+        respuesta = self.client.get(
+            reverse("appreportes:lista"), {"buscar": "basura", "estado": "PENDIENTE"}
+        )
         self.assertEqual(respuesta.context["page_obj"].paginator.count, 1)
 
     # --- Validación de textos: alertas debajo de cada campo, sin páginas de error ---
 
     def test_datos_invalidos_muestran_alertas_bajo_cada_campo(self):
         self.client.force_login(self.ciudadano)
-        respuesta = self.client.post(reverse("appreportes:crear"), self.datos_reporte(
-            titulo="x#$%&@",
-            descripcion="123456789 asdfghjkl 987654321",
-            referencia="12345",
-        ))
+        respuesta = self.client.post(
+            reverse("appreportes:crear"),
+            self.datos_reporte(
+                titulo="x#$%&@",
+                descripcion="123456789 asdfghjkl 987654321",
+                referencia="12345",
+            ),
+        )
         self.assertEqual(respuesta.status_code, 200)
         errores = respuesta.context["form"].errors
         self.assertIn("titulo", errores)
@@ -398,8 +521,13 @@ class VistasReportesTests(TestCase):
 
     def test_descripcion_corta_de_tres_palabras_es_valida(self):
         self.client.force_login(self.ciudadano)
-        self.client.post(reverse("appreportes:crear"), self.datos_reporte(descripcion="Basura en el río"))
-        self.assertTrue(ReporteAmbiental.objects.filter(descripcion="Basura en el río").exists())
+        self.client.post(
+            reverse("appreportes:crear"),
+            self.datos_reporte(descripcion="Basura en el río"),
+        )
+        self.assertTrue(
+            ReporteAmbiental.objects.filter(descripcion="Basura en el río").exists()
+        )
 
     def test_seguimiento_invalido_muestra_alerta_en_el_detalle(self):
         reporte = self.crear_reporte()
@@ -417,23 +545,33 @@ class VistasReportesTests(TestCase):
         reporte = self.crear_reporte()
         self.client.force_login(self.ciudadano)
         respuesta = self.client.post(
-            reverse("appreportes:aportar_informacion", args=[reporte.pk]), {"descripcion": "1234567890123"}
+            reverse("appreportes:aportar_informacion", args=[reporte.pk]),
+            {"descripcion": "1234567890123"},
         )
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, "No escriba más de 8 números seguidos.")
         self.assertEqual(reporte.seguimientos.count(), 0)
 
     def test_reporte_inexistente_vuelve_a_la_lista_con_aviso(self):
-        respuesta = self.client.get(reverse("appreportes:detalle", args=[99999]), follow=True)
+        respuesta = self.client.get(
+            reverse("appreportes:detalle", args=[99999]), follow=True
+        )
         self.assertRedirects(respuesta, reverse("appreportes:lista"))
-        self.assertContains(respuesta, "El reporte que buscas no existe o fue eliminado.")
+        self.assertContains(
+            respuesta, "El reporte que buscas no existe o fue eliminado."
+        )
 
         self.client.force_login(self.admin)
         for nombre in ("editar", "eliminar"):
             with self.subTest(vista=nombre):
-                respuesta = self.client.get(reverse(f"appreportes:{nombre}", args=[99999]))
+                respuesta = self.client.get(
+                    reverse(f"appreportes:{nombre}", args=[99999])
+                )
                 self.assertRedirects(respuesta, reverse("appreportes:lista"))
-        respuesta = self.client.post(reverse("appreportes:cambiar_estado", args=[99999]), {"estado": "EN_PROCESO"})
+        respuesta = self.client.post(
+            reverse("appreportes:cambiar_estado", args=[99999]),
+            {"estado": "EN_PROCESO"},
+        )
         self.assertRedirects(respuesta, reverse("appreportes:lista"))
 
     # --- Volver «Atrás», recargar o abrir como página una dirección de formulario ---
@@ -442,10 +580,17 @@ class VistasReportesTests(TestCase):
         reporte = self.crear_reporte()
         self.client.force_login(self.responsable)
         for nombre in (
-            "agregar_evidencia", "cambiar_estado", "registrar_seguimiento", "aportar_informacion", "asignar", "tomar"
+            "agregar_evidencia",
+            "cambiar_estado",
+            "registrar_seguimiento",
+            "aportar_informacion",
+            "asignar",
+            "tomar",
         ):
             with self.subTest(accion=nombre):
-                respuesta = self.client.get(reverse(f"appreportes:{nombre}", args=[reporte.pk]))
+                respuesta = self.client.get(
+                    reverse(f"appreportes:{nombre}", args=[reporte.pk])
+                )
                 self.assertRedirects(respuesta, reporte.get_absolute_url())
         self.assertEqual(reporte.seguimientos.count(), 0)
         self.assertEqual(reporte.evidencias.count(), 0)
@@ -455,19 +600,27 @@ class VistasReportesTests(TestCase):
         # el navegador abre la dirección de la acción como página.
         reporte = self.crear_reporte()
         url_accion = reverse("appreportes:registrar_seguimiento", args=[reporte.pk])
-        respuesta = self.client.post(url_accion, {"accion": "Inspección", "descripcion": "Se visitó el lugar."})
-        self.assertRedirects(respuesta, f"{reverse('appusuarios:ingresar')}?next={url_accion}")
+        respuesta = self.client.post(
+            url_accion, {"accion": "Inspección", "descripcion": "Se visitó el lugar."}
+        )
+        self.assertRedirects(
+            respuesta, f"{reverse('appusuarios:ingresar')}?next={url_accion}"
+        )
         self.client.force_login(self.responsable)
         respuesta = self.client.get(url_accion)
         self.assertRedirects(respuesta, reporte.get_absolute_url())
 
     def test_pagina_con_errores_no_pide_reenviar_el_formulario(self):
         self.client.force_login(self.ciudadano)
-        con_errores = self.client.post(reverse("appreportes:crear"), self.datos_reporte(titulo="x"))
+        con_errores = self.client.post(
+            reverse("appreportes:crear"), self.datos_reporte(titulo="x")
+        )
         self.assertEqual(con_errores.status_code, 200)
         self.assertContains(con_errores, "history.replaceState")
         # Las páginas abiertas normalmente no llevan el script.
-        self.assertNotContains(self.client.get(reverse("appreportes:crear")), "history.replaceState")
+        self.assertNotContains(
+            self.client.get(reverse("appreportes:crear")), "history.replaceState"
+        )
 
     def test_listas_de_seleccion_en_espanol(self):
         self.client.force_login(self.ciudadano)
@@ -481,7 +634,9 @@ class VistasReportesTests(TestCase):
         self.assertContains(respuesta, "- Seleccione una opción -")
         self.assertNotContains(respuesta, "Select an option")
         # El panel de administración (formulario para agregar un reporte).
-        Administrador.objects.filter(pk=self.admin.pk).update(is_staff=True, is_superuser=True)
+        Administrador.objects.filter(pk=self.admin.pk).update(
+            is_staff=True, is_superuser=True
+        )
         self.client.force_login(self.admin)
         respuesta = self.client.get(reverse("admin:appreportes_reporteambiental_add"))
         self.assertContains(respuesta, "- Seleccione una opción -")
@@ -495,7 +650,9 @@ class VistasReportesTests(TestCase):
         self.client.post(url, self.datos_reporte(token_envio=str(uuid.uuid4())))
         reporte = ReporteAmbiental.objects.get()
         # La página recargada al volver «Atrás» trae un código nuevo, pero los mismos datos.
-        respuesta = self.client.post(url, self.datos_reporte(token_envio=str(uuid.uuid4())), follow=True)
+        respuesta = self.client.post(
+            url, self.datos_reporte(token_envio=str(uuid.uuid4())), follow=True
+        )
         self.assertRedirects(respuesta, reporte.get_absolute_url())
         self.assertContains(respuesta, "Este reporte ya se había guardado")
         self.assertEqual(ReporteAmbiental.objects.count(), 1)
@@ -504,14 +661,21 @@ class VistasReportesTests(TestCase):
         self.client.force_login(self.ciudadano)
         url = reverse("appreportes:crear")
         self.client.post(url, self.datos_reporte(token_envio=str(uuid.uuid4())))
-        self.client.post(url, self.datos_reporte(token_envio=str(uuid.uuid4()), titulo="Basura quemada en el parque"))
+        self.client.post(
+            url,
+            self.datos_reporte(
+                token_envio=str(uuid.uuid4()), titulo="Basura quemada en el parque"
+            ),
+        )
         self.assertEqual(ReporteAmbiental.objects.count(), 2)
 
     def test_el_mismo_problema_se_puede_reportar_pasados_los_minutos(self):
         self.client.force_login(self.ciudadano)
         url = reverse("appreportes:crear")
         self.client.post(url, self.datos_reporte(token_envio=str(uuid.uuid4())))
-        ReporteAmbiental.objects.update(fecha_creacion=timezone.now() - timedelta(minutes=11))
+        ReporteAmbiental.objects.update(
+            fecha_creacion=timezone.now() - timedelta(minutes=11)
+        )
         self.client.post(url, self.datos_reporte(token_envio=str(uuid.uuid4())))
         self.assertEqual(ReporteAmbiental.objects.count(), 2)
 
@@ -533,13 +697,18 @@ class VistasReportesTests(TestCase):
         from django.contrib.staticfiles import finders
 
         respuesta = self.client.get(reverse("appreportes:inicio"))
-        self.assertContains(respuesta, "Cuidemos el ambiente de Las Toreras")
+        self.assertContains(respuesta, "Cuidemos el medio ambiente en El Salvador")
         for titulo in (
-            "No quemes la basura", "Ríos y quebradas limpios", "Evita criaderos de zancudos", "Cómo hacer un buen reporte"
+            "No quemes la basura",
+            "Ríos y quebradas limpios",
+            "Evita criaderos de zancudos",
+            "Cómo hacer un buen reporte",
         ):
             self.assertContains(respuesta, titulo)
         self.assertContains(respuesta, "/static/js/aparecer.js")
-        self.assertIsNotNone(finders.find("js/aparecer.js"), "No existe static/js/aparecer.js")
+        self.assertIsNotNone(
+            finders.find("js/aparecer.js"), "No existe static/js/aparecer.js"
+        )
 
     # --- El responsable y el administrador cambian el estado del mismo reporte a la vez ---
 
@@ -548,8 +717,12 @@ class VistasReportesTests(TestCase):
         # El administrador abrió el reporte cuando estaba pendiente.
         copia_del_admin = ReporteAmbiental.objects.get(pk=reporte.pk)
         reporte.cambiar_estado("EN_PROCESO", self.responsable)
-        with self.assertRaisesMessage(ValidationError, "otro usuario ya lo cambió a «En proceso»"):
-            copia_del_admin.cambiar_estado("DESCARTADO", self.admin, "Reporte duplicado", estado_visto="PENDIENTE")
+        with self.assertRaisesMessage(
+            ValidationError, "otro usuario ya lo cambió a «En proceso»"
+        ):
+            copia_del_admin.cambiar_estado(
+                "DESCARTADO", self.admin, "Reporte duplicado", estado_visto="PENDIENTE"
+            )
         reporte.refresh_from_db()
         self.assertEqual(reporte.estado, "EN_PROCESO")
         self.assertEqual(reporte.historial.count(), 1)
@@ -559,7 +732,9 @@ class VistasReportesTests(TestCase):
         reporte = self.crear_reporte()
         copia_vieja = ReporteAmbiental.objects.get(pk=reporte.pk)
         reporte.cambiar_estado("EN_PROCESO", self.responsable)
-        with self.assertRaisesMessage(ValidationError, "No se permite pasar de En proceso a En proceso"):
+        with self.assertRaisesMessage(
+            ValidationError, "No se permite pasar de En proceso a En proceso"
+        ):
             copia_vieja.cambiar_estado("EN_PROCESO", self.admin)
         self.assertEqual(reporte.historial.count(), 1)
 
@@ -567,16 +742,24 @@ class VistasReportesTests(TestCase):
         reporte = self.crear_reporte()
         detalle = reporte.get_absolute_url()
         self.client.force_login(self.admin)
-        self.assertContains(self.client.get(detalle), 'name="estado_visto" value="PENDIENTE"')
+        self.assertContains(
+            self.client.get(detalle), 'name="estado_visto" value="PENDIENTE"'
+        )
         # Mientras tanto, el responsable lo pasa a «En proceso».
         reporte.cambiar_estado("EN_PROCESO", self.responsable)
         respuesta = self.client.post(
             reverse("appreportes:cambiar_estado", args=[reporte.pk]),
-            {"estado": "DESCARTADO", "observacion": "Reporte duplicado", "estado_visto": "PENDIENTE"},
+            {
+                "estado": "DESCARTADO",
+                "observacion": "Reporte duplicado",
+                "estado_visto": "PENDIENTE",
+            },
             follow=True,
         )
         self.assertRedirects(respuesta, detalle)
-        self.assertContains(respuesta, "otro usuario ya lo cambió a «En proceso» mientras lo revisabas")
+        self.assertContains(
+            respuesta, "otro usuario ya lo cambió a «En proceso» mientras lo revisabas"
+        )
         reporte.refresh_from_db()
         self.assertEqual(reporte.estado, "EN_PROCESO")
         self.assertEqual(reporte.historial.count(), 1)
@@ -607,7 +790,10 @@ class VistasReportesTests(TestCase):
         _, responsable_marn = self.otra_institucion_con_responsable()
         self.client.force_login(responsable_marn)
         detalle = self.client.get(reporte.get_absolute_url())
-        self.assertContains(detalle, "Este caso lo atiende Alcaldía; solo su responsable puede actualizarlo.")
+        self.assertContains(
+            detalle,
+            "Este caso lo atiende Alcaldía; solo su responsable puede actualizarlo.",
+        )
         self.assertNotContains(detalle, "Cambiar estado")
         self.assertNotContains(detalle, "Registrar seguimiento")
         self.assertNotContains(detalle, "Agregar fotografía")
@@ -634,7 +820,9 @@ class VistasReportesTests(TestCase):
         marn, _ = self.otra_institucion_con_responsable()
         de_otra.asignar_a(marn, self.admin)
         self.client.force_login(self.responsable)
-        reportes = list(self.client.get(reverse("appreportes:panel")).context["reportes"])
+        reportes = list(
+            self.client.get(reverse("appreportes:panel")).context["reportes"]
+        )
         self.assertIn(propio, reportes)
         self.assertIn(sin_asignar, reportes)
         self.assertNotIn(de_otra, reportes)
@@ -644,9 +832,13 @@ class VistasReportesTests(TestCase):
         self.client.force_login(self.responsable)
         detalle = self.client.get(reporte.get_absolute_url())
         self.assertContains(detalle, "Tomar este caso")
-        self.assertNotContains(detalle, "Cambiar estado")  # Antes de tomarlo, no lo atiende.
+        self.assertNotContains(
+            detalle, "Cambiar estado"
+        )  # Antes de tomarlo, no lo atiende.
         respuesta = self.client.post(
-            reverse("appreportes:tomar", args=[reporte.pk]), {"observacion": "Se visitará el lugar."}, follow=True
+            reverse("appreportes:tomar", args=[reporte.pk]),
+            {"observacion": "Se visitará el lugar."},
+            follow=True,
         )
         self.assertContains(respuesta, "Tomaste el caso para tu institución")
         self.assertContains(respuesta, "Cambiar estado")
@@ -659,9 +851,15 @@ class VistasReportesTests(TestCase):
         # Los dos abrieron el caso cuando nadie lo había tomado; la alcaldía lo toma primero.
         reporte.tomar(self.responsable)
         self.client.force_login(responsable_marn)
-        respuesta = self.client.post(reverse("appreportes:tomar", args=[reporte.pk]), {"observacion": ""}, follow=True)
+        respuesta = self.client.post(
+            reverse("appreportes:tomar", args=[reporte.pk]),
+            {"observacion": ""},
+            follow=True,
+        )
         self.assertRedirects(respuesta, reporte.get_absolute_url())
-        self.assertContains(respuesta, "No se pudo tomar el caso: ya lo atiende Alcaldía.")
+        self.assertContains(
+            respuesta, "No se pudo tomar el caso: ya lo atiende Alcaldía."
+        )
         self.assertEqual(reporte.asignaciones.filter(activa=True).count(), 1)
         self.assertEqual(reporte.asignacion_activa().institucion, self.institucion)
 
@@ -669,8 +867,14 @@ class VistasReportesTests(TestCase):
         reporte = self.crear_reporte(asignado=False)
         reporte.cambiar_estado("DESCARTADO", self.admin, "Reporte duplicado")
         self.client.force_login(self.responsable)
-        self.assertNotContains(self.client.get(reporte.get_absolute_url()), "Tomar este caso")
-        respuesta = self.client.post(reverse("appreportes:tomar", args=[reporte.pk]), {"observacion": ""}, follow=True)
+        self.assertNotContains(
+            self.client.get(reporte.get_absolute_url()), "Tomar este caso"
+        )
+        respuesta = self.client.post(
+            reverse("appreportes:tomar", args=[reporte.pk]),
+            {"observacion": ""},
+            follow=True,
+        )
         self.assertContains(respuesta, "ya está cerrado")
         self.assertIsNone(reporte.asignacion_activa())
 
@@ -678,16 +882,32 @@ class VistasReportesTests(TestCase):
         reporte = self.crear_reporte()
         marn, _ = self.otra_institucion_con_responsable()
         self.client.force_login(self.responsable)
-        self.assertContains(self.client.get(reporte.get_absolute_url()), "Cambiar estado")
+        self.assertContains(
+            self.client.get(reporte.get_absolute_url()), "Cambiar estado"
+        )
         # Mientras tenía la página abierta, el administrador lo pasó al MARN.
         reporte.asignar_a(marn, self.admin)
         for nombre, datos in (
-            ("cambiar_estado", {"estado": "EN_PROCESO", "observacion": "", "estado_visto": "PENDIENTE"}),
-            ("registrar_seguimiento", {"accion": "Inspección", "descripcion": "Se visitó el lugar."}),
+            (
+                "cambiar_estado",
+                {
+                    "estado": "EN_PROCESO",
+                    "observacion": "",
+                    "estado_visto": "PENDIENTE",
+                },
+            ),
+            (
+                "registrar_seguimiento",
+                {"accion": "Inspección", "descripcion": "Se visitó el lugar."},
+            ),
             ("agregar_evidencia", {"imagen": imagen_de_prueba()}),
         ):
             with self.subTest(accion=nombre):
-                respuesta = self.client.post(reverse(f"appreportes:{nombre}", args=[reporte.pk]), datos, follow=True)
+                respuesta = self.client.post(
+                    reverse(f"appreportes:{nombre}", args=[reporte.pk]),
+                    datos,
+                    follow=True,
+                )
                 self.assertRedirects(respuesta, reporte.get_absolute_url())
                 self.assertContains(respuesta, "Este caso lo atiende MARN")
         reporte.refresh_from_db()
@@ -718,24 +938,35 @@ class VistasReportesTests(TestCase):
     def test_paginas_privadas_no_se_guardan_en_el_navegador(self):
         reporte = self.crear_reporte()
         self.client.force_login(self.ciudadano)
-        for url in (reverse("appreportes:panel"), reverse("appusuarios:perfil"), reporte.get_absolute_url(),
-                    reverse("appreportes:inicio")):
+        for url in (
+            reverse("appreportes:panel"),
+            reverse("appusuarios:perfil"),
+            reporte.get_absolute_url(),
+            reverse("appreportes:inicio"),
+        ):
             with self.subTest(url=url):
                 self.assertIn("no-store", self.client.get(url)["Cache-Control"])
 
     def test_paginas_de_visitantes_no_cambian(self):
         reporte = self.crear_reporte()
-        for url in (reverse("appreportes:inicio"), reverse("appreportes:lista"), reporte.get_absolute_url()):
+        for url in (
+            reverse("appreportes:inicio"),
+            reverse("appreportes:lista"),
+            reporte.get_absolute_url(),
+        ):
             with self.subTest(url=url):
                 self.assertFalse(self.client.get(url).has_header("Cache-Control"))
 
     def test_al_cerrar_sesion_y_volver_a_mi_perfil_pide_iniciar_sesion(self):
         self.client.force_login(self.ciudadano)
-        self.assertIn("no-store", self.client.get(reverse("appusuarios:perfil"))["Cache-Control"])
+        self.assertIn(
+            "no-store", self.client.get(reverse("appusuarios:perfil"))["Cache-Control"]
+        )
         self.client.post(reverse("appusuarios:salir"))
         respuesta = self.client.get(reverse("appusuarios:perfil"))
         self.assertRedirects(
-            respuesta, f"{reverse('appusuarios:ingresar')}?next={reverse('appusuarios:perfil')}"
+            respuesta,
+            f"{reverse('appusuarios:ingresar')}?next={reverse('appusuarios:perfil')}",
         )
 
     # --- Fondos animados (decorativos) ---
@@ -749,17 +980,26 @@ class VistasReportesTests(TestCase):
                 respuesta = self.client.get(reverse(nombre))
                 self.assertContains(respuesta, "eco-fondo-suave")
                 self.assertContains(respuesta, 'class="eco-fondo" aria-hidden="true"')
-                self.assertContains(respuesta, 'type="submit"')  # El formulario sigue igual.
+                self.assertContains(
+                    respuesta, 'type="submit"'
+                )  # El formulario sigue igual.
         # Las demás pantallas no llevan fondo animado.
         self.client.force_login(self.ciudadano)
-        self.assertNotContains(self.client.get(reverse("appreportes:crear")), "eco-fondo")
+        self.assertNotContains(
+            self.client.get(reverse("appreportes:crear")), "eco-fondo"
+        )
 
     # --- Botón «Contacto» y panel de contacto ---
 
     def test_boton_y_panel_de_contacto_en_todas_las_paginas(self):
         reporte = self.crear_reporte()
-        paginas = [reverse("appreportes:inicio"), reverse("appreportes:lista"), reporte.get_absolute_url(),
-                   reverse("appusuarios:ingresar"), reverse("appusuarios:registro")]
+        paginas = [
+            reverse("appreportes:inicio"),
+            reverse("appreportes:lista"),
+            reporte.get_absolute_url(),
+            reverse("appusuarios:ingresar"),
+            reverse("appusuarios:registro"),
+        ]
         for url in paginas:
             with self.subTest(url=url):
                 respuesta = self.client.get(url)
@@ -773,7 +1013,9 @@ class VistasReportesTests(TestCase):
                 self.assertContains(respuesta, "/static/js/contacto.js")
         # También con sesión iniciada (la barra cambia).
         self.client.force_login(self.ciudadano)
-        self.assertContains(self.client.get(reverse("appreportes:panel")), 'id="eco-boton-contacto"')
+        self.assertContains(
+            self.client.get(reverse("appreportes:panel")), 'id="eco-boton-contacto"'
+        )
 
     def test_estilos_y_scripts_llevan_su_version(self):
         # Así el navegador descarga la versión nueva cada vez que el archivo cambia, sin Ctrl + F5.
