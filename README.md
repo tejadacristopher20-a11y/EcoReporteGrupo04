@@ -133,7 +133,7 @@ El sistema se organiza en **4 aplicaciones de Django** y **12 entidades**, cada 
 | **Polimorfismo**                     | `Ciudadano`, `Responsable` y `Administrador` responden de forma distinta a los mismos métodos: `obtener_permisos()`, `reportes_de_panel()` y `titulo_panel()`. Una sola pantalla, "Mi panel", muestra a cada rol los reportes que le corresponden.              |
 | **Encapsulamiento**                  | El estado de un reporte solo puede cambiarse con `cambiar_estado()`, que valida la transición y el permiso del usuario y registra el cambio en `HistorialEstado`. Si se intenta modificar el estado directamente, el sistema lo rechaza.                        |
 | **Abstracción**                      | Las vistas solo preguntan al reporte qué se puede hacer (`puede_modificar()`, `puede_gestionar()`, `es_critico()`, `marcar_como_resuelto()`), sin conocer los detalles internos.                                                                                |
-| **Herencia en vistas y formularios** | Las acciones sobre un reporte (cambiar estado, registrar seguimiento, asignar, tomar el caso, agregar foto) heredan de la clase base `AccionSobreReporteView`. Todos los formularios heredan el estilo visual de `EstiloBootstrapMixin`.                       |
+| **Herencia en vistas y formularios** | Las acciones sobre un reporte (cambiar estado, registrar seguimiento, asignar, tomar el caso, agregar foto) heredan de la clase base `AccionSobreReporteView`. Todos los formularios heredan el estilo visual de `EstiloBootstrapMixin`.                        |
 
 ---
 
@@ -178,30 +178,30 @@ Fase 4: Desarrollo de la aplicación
 
 El sistema funciona con un flujo de responsabilidades claro: **el ciudadano reporta, el administrador asigna cada caso a una institución (o el responsable de la institución lo toma), ese responsable le da seguimiento hasta resolverlo y el administrador mantiene el sistema funcionando**.
 
-| Usuario                                      | Función                                                                                                                                                                                             |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Visitante** (sin cuenta)                   | Consulta la información pública: página de inicio, lista de reportes con filtros y detalle de cada reporte. Puede crear una cuenta de ciudadano.                                                    |
-| **Ciudadano**                                | Reporta los problemas ambientales de su comunidad y da seguimiento a sus propios reportes.                                                                                                          |
+| Usuario                                             | Función                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Visitante** (sin cuenta)                          | Consulta la información pública: página de inicio, lista de reportes con filtros y detalle de cada reporte. Puede crear una cuenta de ciudadano.                                                                                                                                               |
+| **Ciudadano**                                       | Reporta los problemas ambientales de su comunidad y da seguimiento a sus propios reportes.                                                                                                                                                                                                     |
 | **Responsable institucional** (uno por institución) | Atiende los casos de **su institución** (alcaldía, MARN, ONG, centro educativo): toma los casos abiertos que nadie ha tomado, actualiza su estado, registra las acciones de seguimiento y sube fotografías del avance. Puede consultar los casos de otras instituciones, pero no modificarlos. |
-| **Administrador** (único)                           | Mantiene el sistema: crea las instituciones y las cuentas de los responsables, **asigna y reasigna** los casos a las instituciones, administra categorías y comunidades, y elimina reportes falsos, duplicados o inapropiados. Puede atender cualquier caso si un responsable falta. |
+| **Administrador** (único)                           | Mantiene el sistema: crea las instituciones y las cuentas de los responsables, **asigna y reasigna** los casos a las instituciones, administra categorías y comunidades, y elimina reportes falsos, duplicados o inapropiados. Puede atender cualquier caso si un responsable falta.           |
 
 ### Matriz de permisos
 
-| Acción                                                     | Visitante |                     Ciudadano                      |      Responsable       |       Administrador       |
-| ---------------------------------------------------------- | :-------: | :------------------------------------------------: | :--------------------: | :-----------------------: |
-| Ver el inicio, la lista de reportes y su detalle           |    ✅     |                         ✅                         |           ✅           |            ✅             |
-| Crear una cuenta desde la web                              |    ✅     |                         —                          |           —            |             —             |
-| Crear reportes                                             |    ❌     |                         ✅                         |           ❌           |            ✅             |
-| Editar su propio reporte                                   |    ❌     |        ✅ solo mientras está **Pendiente**         |           ❌           |   ✅ cualquier reporte    |
-| Eliminar su propio reporte                                 |    ❌     |        ✅ solo mientras está **Pendiente**         |           ❌           |   ✅ cualquier reporte    |
-| Editar o eliminar reportes de otras personas               |    ❌     |                         ❌                         |           ❌           |            ✅             |
+| Acción                                                     | Visitante |                     Ciudadano                      |        Responsable         |       Administrador       |
+| ---------------------------------------------------------- | :-------: | :------------------------------------------------: | :------------------------: | :-----------------------: |
+| Ver el inicio, la lista de reportes y su detalle           |    ✅     |                         ✅                         |             ✅             |            ✅             |
+| Crear una cuenta desde la web                              |    ✅     |                         —                          |             —              |             —             |
+| Crear reportes                                             |    ❌     |                         ✅                         |             ❌             |            ✅             |
+| Editar su propio reporte                                   |    ❌     |        ✅ solo mientras está **Pendiente**         |             ❌             |   ✅ cualquier reporte    |
+| Eliminar su propio reporte                                 |    ❌     |        ✅ solo mientras está **Pendiente**         |             ❌             |   ✅ cualquier reporte    |
+| Editar o eliminar reportes de otras personas               |    ❌     |                         ❌                         |             ❌             |            ✅             |
 | Agregar fotografías                                        |    ❌     | ✅ a sus reportes, si están Pendiente o En proceso | ✅ casos de su institución |  ✅ a cualquier reporte   |
-| Agregar información adicional (aporte del ciudadano)       |    ❌     | ✅ a sus reportes, si están Pendiente o En proceso |           ❌           | ✅ a sus propios reportes |
-| Asignar o reasignar un reporte a una institución           |    ❌     |                         ❌                         |           ❌           |     ✅ casos abiertos     |
-| Tomar un caso abierto sin asignar, para su institución     |    ❌     |                         ❌                         |   ✅ casos abiertos    |            —              |
-| Cambiar el estado (incluido Descartado, con motivo)        |    ❌     |                         ❌                         | ✅ casos de su institución |    ✅ cualquier caso     |
-| Registrar acciones de seguimiento                          |    ❌     |                         ❌                         | ✅ casos de su institución |    ✅ cualquier caso     |
-| Gestionar usuarios, instituciones y catálogos en `/admin/` |    ❌     |                         ❌                         |           ❌           |            ✅             |
+| Agregar información adicional (aporte del ciudadano)       |    ❌     | ✅ a sus reportes, si están Pendiente o En proceso |             ❌             | ✅ a sus propios reportes |
+| Asignar o reasignar un reporte a una institución           |    ❌     |                         ❌                         |             ❌             |     ✅ casos abiertos     |
+| Tomar un caso abierto sin asignar, para su institución     |    ❌     |                         ❌                         |     ✅ casos abiertos      |             —             |
+| Cambiar el estado (incluido Descartado, con motivo)        |    ❌     |                         ❌                         | ✅ casos de su institución |     ✅ cualquier caso     |
+| Registrar acciones de seguimiento                          |    ❌     |                         ❌                         | ✅ casos de su institución |     ✅ cualquier caso     |
+| Gestionar usuarios, instituciones y catálogos en `/admin/` |    ❌     |                         ❌                         |             ❌             |            ✅             |
 
 En **"Mi panel"**, cada rol ve los reportes que le corresponden: el ciudadano ve **"Mis reportes"**, el responsable ve **"Casos de mi institución"** (los asignados a su institución y los casos abiertos que nadie ha tomado todavía) y el administrador ve **"Todos los reportes"**.
 
@@ -254,11 +254,11 @@ Una vez que el caso está **En proceso**, el ciudadano ya no puede modificar los
 
 ### Creación de cuentas y contraseñas
 
-| Usuario           | Cómo se crea la cuenta                                                                                                                                                              |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Administrador** | Desde la terminal, una sola vez: `python manage.py createsuperuser`. Puede iniciar sesión con su nombre de usuario o con su correo.                                                 |
+| Usuario           | Cómo se crea la cuenta                                                                                                                                                                                                                                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Administrador** | Desde la terminal, una sola vez: `python manage.py createsuperuser`. Puede iniciar sesión con su nombre de usuario o con su correo.                                                                                                                                                                                                                           |
 | **Responsable**   | Lo crea el administrador. Primero registra la institución en `/admin/` → Instituciones y luego, en `/admin/` → Usuarios → **Añadir usuario**, crea la cuenta con el rol **Responsable institucional**, **esa institución** (obligatoria; una institución no puede tener dos responsables) y una contraseña temporal que el responsable cambia en "Mi perfil". |
-| **Ciudadano**     | Se registra por su cuenta en la página con la opción **"Registrarse"**. El formulario de registro siempre crea cuentas de ciudadano; nadie puede elegir otro rol desde ahí.         |
+| **Ciudadano**     | Se registra por su cuenta en la página con la opción **"Registrarse"**. El formulario de registro siempre crea cuentas de ciudadano; nadie puede elegir otro rol desde ahí.                                                                                                                                                                                   |
 
 **Requisitos al crear la cuenta de ciudadano:**
 
@@ -550,3 +550,7 @@ Las vistas, las plantillas y los modelos funcionan conectados entre sí. Toda la
 - Ciudadano — registrar reportes; editar y eliminar el suyo mientras está Pendiente; agregar fotos e información mientras el caso está abierto.
 - Responsable (uno por institución) — tomar casos sin asignar para su institución y, en los casos de su institución, cambiar el estado, registrar seguimiento y subir fotografías.
 - Administrador (único) — asignar y reasignar casos a las instituciones, atender cualquier caso, y gestionar usuarios y catálogos en /admin/.
+
+### Beneficios sociales:
+
+El proyecto EcoReporte Comunitario busca fortalecer la participación ciudadana mediante una plataforma digital que facilite la identificación, el registro y el seguimiento de los problemas ambientales que afectan a las comunidades. Asimismo, promueve la comunicación y colaboración entre los habitantes, las alcaldías y las organizaciones ambientales, permitiendo una mejor organización y atención de las situaciones reportadas. También fomenta la educación ambiental, la responsabilidad colectiva y el compromiso con la protección de los recursos naturales, contribuyendo a mejorar la salud pública, la calidad de vida y el bienestar de la población, así como a construir comunidades más limpias, seguras y sostenibles.
